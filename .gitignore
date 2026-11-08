@@ -8,3 +8,6 @@ logs/*
 !logs/.gitkeep
 ci.db
 
+
+# Local backup scripts
+src/deliver_backup.py

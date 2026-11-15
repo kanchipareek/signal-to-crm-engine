@@ -122,7 +122,6 @@ python -m pytest tests/ -v
 - **Lever is not built.** Only Greenhouse is supported. Of 59 candidate accounts, 18 have a public Greenhouse board. That's a real coverage limit, not a bug.
 - **Re-posts match exactly.** A re-listed job is caught only when company + title match within 90 days. A retitled re-post looks new.
 - **Logs are plain text**, not structured JSON.
-- **No CRM hand-off.** The receiver records events. Routing to a CRM is a later project.
 
 ## Project structure
 
@@ -139,3 +138,6 @@ docs/      signal_rules.md (first-seen / unchanged / re-posted)
 ## License
 
 MIT. See LICENSE.
+
+## crm hand-off (n8n + hubspot)
+signals go to a local n8n workflow. it checks the hmac signature, figures out the signal type (revenue leader, marketing leader or review), finds or creates the company in hubspot by domain, and creates a dated task for the owner. if a company already has an owner i keep it. repeats come back as "duplicate". if hubspot errors, i return 500 so the detector retries. details are in `docs/routing_spec.md`. tests are in `scripts/send_test_signals.py` (6 cases, all passing). built on hubspot free and self-hosted n8n, sandbox only. known gaps are listed in the spec.

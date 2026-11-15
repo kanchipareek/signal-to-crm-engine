@@ -11,3 +11,10 @@ ci.db
 
 # Local backup scripts
 src/deliver_backup.py
+
+# reference kit (local only)
+ref_kit/
+
+node_modules/
+package.json
+package-lock.json

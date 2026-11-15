@@ -1,0 +1,13 @@
+company_id,name,domain,source,board_token
+1001,UserGems,usergems.com,greenhouse,usergems
+1002,Celigo,celigo.com,greenhouse,celigo
+1003,Knak,knak.com,greenhouse,knak
+1004,Aligned,alignedup.com,greenhouse,aligned
+1005,Later,later.com,greenhouse,later
+1006,LaunchDarkly,launchdarkly.com,greenhouse,launchdarkly
+1007,Salesloft,salesloft.com,greenhouse,salesloft
+1008,Mixpanel,mixpanel.com,greenhouse,mixpanel
+1009,Customer.io,customer.io,greenhouse,customerio
+1010,Cognism,cognism.com,greenhouse,cognism
+1011,Sprout Social,sproutsocial.com,greenhouse,sproutsocial
+1012,PandaDoc,pandadoc.com,greenhouse,pandadoc

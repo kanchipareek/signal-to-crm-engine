@@ -8,6 +8,7 @@
     "signal_id": {"type": "integer"},
     "company_id": {"type": "integer"},
     "company_name": {"type": "string"},
+    "company_domain": {"type": ["string", "null"]},
     "source": {"type": "string"},
     "board_token": {"type": "string"},
     "external_id": {"type": "string"},

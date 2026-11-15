@@ -55,7 +55,7 @@ def main():
         raise SystemExit(1)
 
     rule = load_rule()
-    boards = [r for r in csv.DictReader(Path("config/boards.csv").open(encoding="utf-8"))
+    boards = [r for r in csv.DictReader(Path(os.environ.get("BOARDS_CSV", "config/boards.csv")).open(encoding="utf-8"))
               if r["board_token"].strip()]
     print(f"checking {len(boards)} boards")
 

@@ -6,6 +6,7 @@ tables are created from the SQL files. The detector then runs against this
 exactly as it would against the real one - it just starts from empty signals.
 """
 import csv
+import os
 import sqlite3
 from pathlib import Path
 
@@ -18,7 +19,7 @@ def main():
         db.unlink()
     conn = sqlite3.connect(db)
     conn.executescript("CREATE TABLE companies(id INTEGER PRIMARY KEY, name TEXT, domain TEXT);")
-    with (ROOT / "config" / "boards.csv").open(encoding="utf-8") as fh:
+    with Path(os.environ.get("BOARDS_CSV", ROOT / "config" / "boards.csv")).open(encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
             if row["board_token"].strip():
                 conn.execute(

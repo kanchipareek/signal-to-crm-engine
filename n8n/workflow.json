@@ -1,0 +1,632 @@
+{
+  "name": "Hiring signal to HubSpot",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "signal",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "873dd4d3-11eb-4129-977c-8ee90bdf2946",
+      "name": "Signal webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        48,
+        352
+      ],
+      "webhookId": "e082eb88-b56a-46c6-b6dd-017dc05dcfc1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9f53ef26-784b-4717-ae56-12b4742c3ab3",
+              "name": "webhook_secret",
+              "value": "PASTE_YOUR_SECRET",
+              "type": "string"
+            },
+            {
+              "id": "2e8df8c9-cecb-48df-a5ce-83f0d642de76",
+              "name": "ae_owner_id",
+              "value": "PASTE_YOUR_OWNER_ID",
+              "type": "number"
+            },
+            {
+              "id": "37a81543-5e82-48ce-a27f-b192ae038d81",
+              "name": "triage_owner_id",
+              "value": "PASTE_YOUR_OWNER_ID",
+              "type": "number"
+            },
+            {
+              "id": "bba54ee7-b9f7-4556-88b2-5693da78d0d3",
+              "name": "signal_expiry_days",
+              "value": 30,
+              "type": "number"
+            },
+            {
+              "id": "fc53360f-a311-4442-88ce-eeb97b224f6e",
+              "name": "hubspot_base",
+              "value": "https://api.hubapi.com",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "ec35e4b4-5d62-48f8-bac3-9fee03938dbc",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        272,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1) Check the HMAC signature on the RAW body (same bytes Python signed).\n// 2) Check the fields we need are there.\nconst crypto = require('crypto');\nconst cfg = $('Config').first().json;\nconst req = $('Signal webhook').first().json;\n\nconst raw = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst got = String(req.headers['x-signature'] || '');\nconst expected = crypto.createHmac('sha256', cfg.webhook_secret).update(raw).digest('hex');\n\nlet ok = got.length === expected.length &&\n  crypto.timingSafeEqual(Buffer.from(got), Buffer.from(expected));\nif (!ok) {\n  return [{ json: { valid: false, http_status: 401, error: 'bad signature' } }];\n}\n\nlet p;\ntry { p = JSON.parse(raw.toString('utf8')); }\ncatch (e) { return [{ json: { valid: false, http_status: 400, error: 'invalid json' } }]; }\n\nconst required = ['event', 'source', 'board_token', 'external_id', 'title', 'company_name', 'company_domain'];\nconst missing = required.filter(f => !p[f]);\nif (missing.length) {\n  return [{ json: { valid: false, http_status: 400, error: 'missing fields', fields: missing } }];\n}\n\n// Clean the domain so \"https://www.UserGems.com/\" and \"usergems.com\" match.\nconst domain = String(p.company_domain).toLowerCase()\n  .replace(/^https?:\\/\\//, '').replace(/^www\\./, '').replace(/\\/.*$/, '').trim();\n\nconst key = req.headers['x-idempotency-key'] ||\n  `${p.source}:${p.board_token}:${p.external_id}:${p.event}`;\n\nreturn [{ json: { valid: true, http_status: 200, key, domain, signal: p } }];\n"
+      },
+      "id": "26cb9dd3-4d8a-493d-897a-fdccef15aa91",
+      "name": "Verify signature + fields",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1108c51-3b80-453e-b001-50a4843f1eb9",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0cadd980-315c-4656-927b-ae7d0bb7df75",
+      "name": "Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        704,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ error: $json.error, fields: $json.fields || [] }) }}",
+        "options": {
+          "responseCode": "={{ $json.http_status }}"
+        }
+      },
+      "id": "cdded1eb-9266-4ac3-9803-8542441b123c",
+      "name": "Reject (401/400)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        928,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// The routing rule, written down in one place.\n// Three signal types (each one has an owner, an action, and a window):\n//   revenue_leader   -> AE owner,      HIGH,   act within 2 days\n//   marketing_leader -> AE owner,      MEDIUM, act within 3 days\n//   review           -> triage owner,  LOW,    look within 5 days\n// \"review\" = regional/country heads or anything the rule isn't sure about.\nconst v = $input.first().json;\nconst t = ' ' + String(v.signal.title).toLowerCase().replace(/[^a-z0-9]+/g, ' ') + ' ';\n\nconst regional = /( emea | apac | anz | dach | uki | uk | latam | amer | japan | india | north america | europe | regional | region )/;\nconst revenue = /( sales | revenue | cro | chief revenue | gtm | go to market | commercial )/;\nconst marketing = /( marketing | growth | demand | cmo | brand )/;\n\nlet type = 'review';\nif (regional.test(t)) type = 'review';\nelse if (revenue.test(t)) type = 'revenue_leader';\nelse if (marketing.test(t)) type = 'marketing_leader';\n\nconst plays = {\n  revenue_leader:   { priority: 'HIGH',   due_days: 2, label: 'New revenue leader' },\n  marketing_leader: { priority: 'MEDIUM', due_days: 3, label: 'New marketing/growth leader' },\n  review:           { priority: 'LOW',    due_days: 5, label: 'Needs a human look' },\n};\nreturn [{ json: { ...v, signal_type: type, play: plays[type] } }];\n"
+      },
+      "id": "180a62d8-9fe0-4816-a286-16a111679ea8",
+      "name": "Route rule",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.hubspot_base }}/crm/v3/objects/companies/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ filterGroups: [{ filters: [{ propertyName: 'domain', operator: 'EQ', value: $json.domain }] }], properties: ['name','domain','hubspot_owner_id','gtm_signal_key'], limit: 1 }) }}",
+        "options": {}
+      },
+      "id": "07854276-f471-4bb4-9e93-6327dd5e983a",
+      "name": "Find company by domain",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1152,
+        240
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "f4AsJQdPlPlmXPtL",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Decide: is this company new, already in HubSpot, or is this signal a repeat?\n// Also decide the owner, and say why (so nobody has to guess later).\nconst cfg = $('Config').first().json;\nconst r = $('Route rule').first().json;\nconst found = ($input.first().json.results || [])[0] || null;\n\nif (found && found.properties && found.properties.gtm_signal_key === r.key) {\n  return [{ json: { ...r, action: 'duplicate', company_id: found.id } }];\n}\n\nconst existingOwner = found && found.properties ? found.properties.hubspot_owner_id : null;\nlet owner = null, note = '';\nif (existingOwner) {\n  owner = existingOwner;\n  note = 'Kept the owner already on the company record';\n} else {\n  const wanted = r.signal_type === 'review' ? cfg.triage_owner_id : cfg.ae_owner_id;\n  if (wanted) {\n    owner = String(wanted);\n    note = r.signal_type === 'review' ? 'No owner yet. Sent to triage by rule' : 'No owner yet. Assigned to AE by rule';\n  } else {\n    owner = String(cfg.triage_owner_id);\n    note = 'MISSING OWNER: rule had no AE set, fell back to triage';\n  }\n}\nreturn [{ json: { ...r, action: found ? 'update' : 'create', company_id: found ? found.id : null, owner_id: owner, routing_note: note } }];\n"
+      },
+      "id": "f9ce55cb-ebf0-4b70-96d9-01448389076a",
+      "name": "Decide",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "47eb7423-e008-4287-9a28-c1a7d0a84cae",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "duplicate",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e6baf8e9-1935-413c-80ff-0c06114fde99",
+      "name": "Repeat signal?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1584,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'duplicate', company_id: $json.company_id, key: $json.key }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "6b02cc92-08cd-4f10-8ba9-775932d46605",
+      "name": "Reply: duplicate, skipped",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1808,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://{{ $json.domain }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "id": "88dc9e5c-5925-4aa2-80c7-2f91b9e14e06",
+      "name": "Check homepage",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1808,
+        352
+      ],
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enrich: one cheap public check. Does the homepage load a HubSpot,\n// Marketo or Pardot tracking script? It's a hint, not proof\n// (lots of sites load these through Google Tag Manager, which we can't see).\nconst d = $('Decide').first().json;\nconst res = $input.first().json || {};\nconst html = String(res.data || res.body || '');\nlet hint = 'not_checked';\nif (html.length > 500) {\n  if (/js\\.hs-scripts\\.com|js\\.hsforms\\.net|js\\.hs-analytics\\.net/i.test(html)) hint = 'hubspot';\n  else if (/munchkin\\.marketo\\.net|munchkin\\.js|Munchkin\\.init/i.test(html)) hint = 'marketo';\n  else if (/pi\\.pardot\\.com|piAId/i.test(html)) hint = 'pardot';\n  else hint = 'none_found';\n}\nconst today = new Date();\nconst addDays = n => { const x = new Date(today); x.setUTCDate(x.getUTCDate() + n); return x; };\nconst ymd = x => x.toISOString().slice(0, 10);\nconst cfg = $('Config').first().json;\nconst s = d.signal;\nconst signalDate = (s.first_published || s.detected_at || ymd(today)).slice(0, 10);\n\nconst properties = {\n  name: s.company_name,\n  domain: d.domain,\n  hubspot_owner_id: d.owner_id,\n  gtm_signal_type: d.signal_type,\n  gtm_signal_title: s.title,\n  gtm_signal_url: s.source_url || '',\n  gtm_signal_date: signalDate,\n  gtm_signal_key: d.key,\n  gtm_signal_status: 'new',\n  gtm_signal_expires: ymd(addDays(Number(cfg.signal_expiry_days))),\n  marketing_stack_hint: hint,\n  gtm_routing_note: d.routing_note,\n};\n// On an existing record, don't overwrite the name/domain/owner someone already set.\nif (d.action === 'update') {\n  delete properties.name;\n  delete properties.domain;\n  if (d.routing_note.startsWith('Kept')) delete properties.hubspot_owner_id;\n}\nconst stackText = { hubspot: 'Homepage loads HubSpot tracking', marketo: 'Homepage loads Marketo', pardot: 'Homepage loads Pardot', none_found: 'No HubSpot/Marketo/Pardot script found on homepage', not_checked: 'Homepage not checked' }[hint];\nconst task = {\n  hs_task_subject: `${d.play.label}: ${s.title} at ${s.company_name}`,\n  hs_task_body: [\n    `Signal: ${s.company_name} posted \"${s.title}\" (${signalDate}).`,\n    `Evidence: ${s.source_url || 'no url'}`,\n    `Stack hint: ${stackText}.`,\n    `Why you: ${d.routing_note}.`,\n    `Next step: decide the play within ${d.play.due_days} days, or mark the company \"No action\" with a reason.`,\n    `Signal expires: ${properties.gtm_signal_expires}.`,\n  ].join('\\n'),\n  hs_task_priority: d.play.priority,\n  hs_task_status: 'NOT_STARTED',\n  hs_task_type: 'TODO',\n  hs_timestamp: addDays(d.play.due_days).toISOString(),\n  hubspot_owner_id: d.owner_id,\n};\nreturn [{ json: { ...d, hint, properties, task } }];\n"
+      },
+      "id": "2153163e-20d3-48c4-a57b-1340a7cc8310",
+      "name": "Enrich + build records",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fa60d79c-4b0a-4579-b419-1f5cccf13831",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "create",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a905851d-b884-4b49-950b-749cce8c49f4",
+      "name": "New company?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2240,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.hubspot_base }}/crm/v3/objects/companies",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ properties: $json.properties }) }}",
+        "options": {}
+      },
+      "id": "1a5b0680-8a8b-45bf-8579-1f2b77f3cfd7",
+      "name": "Create company",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2464,
+        240
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "f4AsJQdPlPlmXPtL",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $('Config').first().json.hubspot_base }}/crm/v3/objects/companies/{{ $json.company_id }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ properties: $json.properties }) }}",
+        "options": {}
+      },
+      "id": "2ce31152-e86f-4ca6-b06d-b1f1ccf7eea3",
+      "name": "Update company",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2464,
+        464
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "f4AsJQdPlPlmXPtL",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Whichever branch ran (create or update), grab the company id.\nconst e = $('Enrich + build records').first().json;\nreturn [{ json: { ...e, company_id: $input.first().json.id } }];\n"
+      },
+      "id": "7bd60f7b-4eb3-4e87-b44a-77221ddc288d",
+      "name": "Keep company id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2688,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Config').first().json.hubspot_base }}/crm/v3/objects/tasks",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ properties: $json.task, associations: [{ to: { id: $json.company_id }, types: [{ associationCategory: 'HUBSPOT_DEFINED', associationTypeId: 192 }] }] }) }}",
+        "options": {}
+      },
+      "id": "bc18c3c8-dc32-4ffb-a53e-d88209c83497",
+      "name": "Create task for owner",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2912,
+        352
+      ],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "f4AsJQdPlPlmXPtL",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: $('Keep company id').first().json.action === 'create' ? 'created' : 'updated', company_id: $('Keep company id').first().json.company_id, task_id: $json.id, signal_type: $('Keep company id').first().json.signal_type, owner_id: $('Keep company id').first().json.owner_id, routing_note: $('Keep company id').first().json.routing_note, stack_hint: $('Keep company id').first().json.hint }) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "ae66e19d-1434-41c1-90e7-06a99b959876",
+      "name": "Reply: routed",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3120,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Signal -> enrich -> route\n**Purpose:** turn a senior GTM hire into a HubSpot company + an owned, dated task.\n**Trigger:** signed POST from gtm-signal-detector (`src/deliver.py`).\n**Owner:** Kanchi Pareek.\n**Fails loudly:** bad signature = 401, bad payload = 400, HubSpot error = 500 so the detector retries / dead-letters.\n**Setup:** fill the Config node, pick the HubSpot credential on the 4 HubSpot nodes.",
+        "height": 260,
+        "width": 520
+      },
+      "id": "f06d8bff-660f-4e77-8528-ee3d2782a5a1",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Signal webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Verify signature + fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify signature + fields": {
+      "main": [
+        [
+          {
+            "node": "Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid?": {
+      "main": [
+        [
+          {
+            "node": "Route rule",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject (401/400)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route rule": {
+      "main": [
+        [
+          {
+            "node": "Find company by domain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find company by domain": {
+      "main": [
+        [
+          {
+            "node": "Decide",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Decide": {
+      "main": [
+        [
+          {
+            "node": "Repeat signal?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repeat signal?": {
+      "main": [
+        [
+          {
+            "node": "Reply: duplicate, skipped",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check homepage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check homepage": {
+      "main": [
+        [
+          {
+            "node": "Enrich + build records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich + build records": {
+      "main": [
+        [
+          {
+            "node": "New company?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New company?": {
+      "main": [
+        [
+          {
+            "node": "Create company",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update company",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create company": {
+      "main": [
+        [
+          {
+            "node": "Keep company id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update company": {
+      "main": [
+        [
+          {
+            "node": "Keep company id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep company id": {
+      "main": [
+        [
+          {
+            "node": "Create task for owner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create task for owner": {
+      "main": [
+        [
+          {
+            "node": "Reply: routed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "b155b24c-a216-4907-9835-c7da816bf253",
+  "meta": {
+    "instanceId": "22f82cae99fca349b78f4b86e7959f00bc09f3643f890903f84e93599025e1cb"
+  },
+  "nodeGroups": [],
+  "id": "jcZ4LezpFVbNlgfs",
+  "tags": []
+}

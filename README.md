@@ -4,6 +4,8 @@ i built this to catch two things that usually mean a company is about to spend o
 
 hires come from public job boards on greenhouse and ashby. funding comes from sec form d filings.
 
+it can also work the other way round: give it a company that sells something (say nozzle.io), and it finds companies that look ready to buy from them right now, with the reason and the founders' names. see [find leads for any seller](#find-leads-for-any-seller).
+
 > the list of accounts comes from my other project, [lead-enrichment-engine](https://github.com/kanchipareek/lead-enrichment-engine).
 
 some numbers from my runs:
@@ -20,7 +22,7 @@ cd signal-to-crm-engine
 python -m venv .venv
 source .venv/bin/activate          # windows (git bash): source .venv/Scripts/activate
 pip install -r requirements.txt
-python -m pytest tests/ -q         # 89 passed
+python -m pytest tests/ -q         # 125 passed
 ```
 
 ### trying it without project 1
@@ -132,6 +134,49 @@ for now i've added 8 companies where the legal name and hq city clearly match: v
 ### did it work on real filings?
 
 i ran it once with the window stretched to 10 years. it picked up rounds i already knew about: notion $260m (2021), figma $189.6m (2021), drata $200m (dec 2022), hebbia $93m (2024). it skipped every amendment, held drata's 2025 merger filing for review, and marked deel's small 2024 filings as near misses. with the normal 180-day window none of the 8 has filed recently, so a run today finds 0. that's correct.
+
+## find leads for any seller
+
+everything above watches my own account list. this flips it around. i type in any startup or agency, and it finds companies that look ready to buy from them right now, tells me why, and gives me the founders' names.
+
+```
+python scripts/find_leads.py theirdomain.com
+```
+
+what it does:
+
+1. **works out who they sell to.** it reads their homepage, pricing, customers and about pages, and gemini writes a profile: what they sell, who buys it, which job titles mean a company is building the team that would buy it, and what size of raise means there's budget. it saves this to `config/sellers/<their-domain>.json` so i can read it, fix it, and re-run without asking gemini again.
+2. **finds companies that could be buyers.** every company that filed a form d in the last 14 days, cut down to real raises in the seller's industries (funds, llcs and amendments dropped), plus my account list and 20 to 30 likely buyers from the profile.
+3. **checks each one for signals.**
+   - funding: a form d in the window, with the amount.
+   - hiring: open jobs on their greenhouse or ashby board whose titles match the seller's buyers. for an seo tool that's "head of seo", not "paid social manager".
+4. **writes a ranked lead list** to `leads/<seller>-<date>.md` and `.csv`: the company, its website, why it fits, links to the filing and job posts as proof, and the people on its sec filing. for a startup those are almost always the founders and the ceo. raised and hiring ranks highest.
+
+form d gives a legal name, not a website, so i guess the domain from the name (`Deep Cogito Inc.` → `deepcogito.com`) and check the homepage actually belongs to them. parked domains and redirects somewhere else get rejected. guessed websites are labelled in the report so i know to double check them.
+
+### the gemini key
+
+step 1 needs a free gemini key from google ai studio. put it in `.env` as `GEMINI_API_KEY=...`. without a key it still works, but someone has to write the profile by hand: copy `config/sellers/_template.json`. `config/sellers/nozzle-io.json` is a filled-in example.
+
+two things i ran into:
+
+- **the key has to come from a project with no billing.** my first key was in a project with prepaid billing and no credits, and every call came back `402 prepayment credits are depleted`, even on the free models. a key from a fresh project with no billing works.
+- **the bigger free model is often busy.** `gemini-3.8-flash` came back `503 high demand` a few times. if that happens it retries once, then switches to `gemini-3.5-flash-lite`, which has answered every time so far.
+
+some sites block scripts (gusto.com sends a 403 to anything automated). when that happens, gemini writes the profile from what it already knows about the company. the run tells you so, and the profile is marked `check it`. if gemini doesn't know the company, it stops and asks for a hand-written profile instead of guessing.
+
+i went with gemini because the free tier is enough for this. it's one call per seller, and only public website text gets sent. on the free tier google can use that text to improve its products, which is fine for public pages. any llm would do. gemini is just the free one.
+
+### my first run
+
+i tested it on nozzle.io (an seo tracking tool), with a profile i wrote by hand because i didn't have a key yet. over the last 14 days of form ds it went through 1,620 filings, kept 388 after dropping funds and llcs, and found 43 companies that raised $5m+ in nozzle's industries. with my account list added, that came out to 49 leads, and 45 of them had founder names from their filing. the top one was the kind of lead i wanted: zeely raised $17m and is hiring a marketing analytics lead.
+
+it also showed me what's still weak:
+
+- **raised doesn't mean they're a fit.** form d's "other technology" covers saas, robotics and biotech alike, so a robotics company that raised $30m still shows up as a nozzle lead. hiring signals are much more targeted. the next step is a fit check on each lead's homepage.
+- **about a quarter of the funded companies had no website i could confirm.** the founders' names are still there, so you can search for them.
+- **the website guess can be wrong.** alcar inc. (darien, ct) first got matched to a swedish alcar.se. i fixed that one (redirects to foreign domains are rejected now), but guessed sites still need a look.
+- **hiring is only checked at companies it already found.** there's no list of every job board out there.
 
 ## crm hand-off (n8n + hubspot)
 
@@ -256,6 +301,7 @@ python -m pytest tests/ -v
 - `tests/test_webhook.py` has 14 cases for when things go wrong: replays, bad signatures, broken bodies, running out of retries, dead-lettering and re-running the detector.
 - `tests/test_payload.py` checks the company domain makes it into the payload.
 - `tests/test_ashby.py` has 14 cases for ashby: the posting format, skipping unlisted jobs, picking the right fetcher, and the finder's domain check (including the circle.so case).
+- `tests/test_leads.py` has 34 cases for the lead finder: guessing websites (and rejecting parked or foreign ones), matching job titles to a seller's buyers, sec name matching, founder names, scoring, the seller profile, and the gemini client with the network mocked out.
 - `tests/test_funding.py` has 27 cases for the funding signal: reading form d, every branch of the rule, the $5m line, the 180-day window, no duplicates, same-day filings and the payload.
 
 `scripts/send_test_signals.py` also runs 7 end-to-end tests against the real n8n workflow and hubspot:
@@ -300,14 +346,15 @@ tests 1 to 6 passed on a free hubspot sandbox on 15 nov 2026. i haven't run test
 ```
 config/    match_rule.json (hire rule), funding_rule.json (funding rule),
            boards.csv (job boards, greenhouse or ashby), boards_gtm.csv (12-board demo list),
-           sec_issuers.csv (company -> sec cik)
-src/       fetch.py  match.py  sec.py  funding.py  deliver.py
-scripts/   run_detector.py  run_funding_detector.py  find_sec_ciks.py  webhook_server.py
+           sec_issuers.csv (company -> sec cik),
+           sellers/ (one profile per seller for the lead finder, plus _template.json)
+src/       fetch.py  match.py  sec.py  funding.py  deliver.py  seller.py  leads.py  llm.py
+scripts/   run_detector.py  run_funding_detector.py  find_leads.py  find_sec_ciks.py  webhook_server.py
            show_signals.py  run_sql.py  build_ci_db.py  send_test_signals.py  check_invalid_signal.py
 n8n/       workflow.json (the hubspot hand-off, secrets swapped for placeholders)
 sql/       schema and migrations
 schemas/   signal.schema.json
-tests/     test_match.py  test_ashby.py  test_funding.py  test_webhook.py  test_payload.py
+tests/     test_match.py  test_ashby.py  test_funding.py  test_leads.py  test_webhook.py  test_payload.py
 docs/      signal_rules.md (how repeats are handled), routing_spec.md (the crm routing)
 .github/   workflows/detect.yml (the scheduled run)
 ```

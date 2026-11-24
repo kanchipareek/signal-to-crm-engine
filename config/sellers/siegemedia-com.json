@@ -1,0 +1,153 @@
+{
+  "seller": "siegemedia.com",
+  "seller_name": "Siege Media",
+  "sells": "Siege Media provides full-service Generative Engine Optimization (GEO), SEO, content marketing, digital PR, and affiliate partnership services to help brands scale their organic visibility across traditional search engines and AI answer engines.",
+  "buyers": "B2B SaaS, Fintech, E-commerce, Health, and Cybersecurity companies that want to scale their organic traffic, LLM citations, and brand visibility need these services. They buy because they rely heavily on organic acquisition and need specialized agency help to adapt their content strategies for AI-first search engines.",
+  "buyer_roles": [
+    "Head of SEO",
+    "VP of Marketing",
+    "Director of Content Marketing",
+    "Head of Organic Growth",
+    "Chief Marketing Officer"
+  ],
+  "hire_keywords": [
+    "affiliate marketing",
+    "brand marketing",
+    "content marketing",
+    "content strategy",
+    "demand generation",
+    "digital pr",
+    "growth marketing",
+    "organic search",
+    "search engine optimization",
+    "seo"
+  ],
+  "exclude_title_words": [
+    "account executive",
+    "assistant",
+    "design",
+    "intern",
+    "paid",
+    "performance",
+    "ppc",
+    "recruiter",
+    "sales",
+    "social"
+  ],
+  "hire_reason": "Hiring for organic search and content roles indicates the company is investing in inbound channels and will likely outsource execution or strategy to an agency like Siege Media.",
+  "form_d_industry_groups": [
+    "Other Technology",
+    "Commercial",
+    "Computers",
+    "Biotechnology",
+    "Other Health Care",
+    "Other Banking and Financial Services"
+  ],
+  "min_raise_usd": 2000000,
+  "max_raise_usd": 50000000,
+  "startups_only": true,
+  "funding_reason": "A fresh funding round provides startups and scaleups with the capital required to invest heavily in aggressive content marketing, SEO, and AI search visibility campaigns.",
+  "example_buyers": [
+    {
+      "name": "Mentimeter",
+      "domain": "mentimeter.com"
+    },
+    {
+      "name": "Ramp",
+      "domain": "ramp.com"
+    },
+    {
+      "name": "Instacart",
+      "domain": "instacart.com"
+    },
+    {
+      "name": "Zendesk",
+      "domain": "zendesk.com"
+    },
+    {
+      "name": "The Zebra",
+      "domain": "thezebra.com"
+    },
+    {
+      "name": "Loom",
+      "domain": "loom.com"
+    },
+    {
+      "name": "Webflow",
+      "domain": "webflow.com"
+    },
+    {
+      "name": "Zapier",
+      "domain": "zapier.com"
+    },
+    {
+      "name": "Notion",
+      "domain": "notion.so"
+    },
+    {
+      "name": "Airtable",
+      "domain": "airtable.com"
+    },
+    {
+      "name": "Linear",
+      "domain": "linear.app"
+    },
+    {
+      "name": "Vanta",
+      "domain": "vanta.com"
+    },
+    {
+      "name": "Drata",
+      "domain": "drata.com"
+    },
+    {
+      "name": "Postman",
+      "domain": "postman.com"
+    },
+    {
+      "name": "Gong",
+      "domain": "gong.io"
+    },
+    {
+      "name": "Chime",
+      "domain": "chime.com"
+    },
+    {
+      "name": "Brex",
+      "domain": "brex.com"
+    },
+    {
+      "name": "Retool",
+      "domain": "retool.com"
+    },
+    {
+      "name": "Personio",
+      "domain": "personio.com"
+    },
+    {
+      "name": "Deel",
+      "domain": "deel.com"
+    },
+    {
+      "name": "Gusto",
+      "domain": "gusto.com"
+    },
+    {
+      "name": "Calendly",
+      "domain": "calendly.com"
+    },
+    {
+      "name": "Buffer",
+      "domain": "buffer.com"
+    },
+    {
+      "name": "Hotjar",
+      "domain": "hotjar.com"
+    },
+    {
+      "name": "Wistia",
+      "domain": "wistia.com"
+    }
+  ],
+  "made_by": "gemini, from their website"
+}

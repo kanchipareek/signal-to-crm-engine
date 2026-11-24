@@ -1,0 +1,132 @@
+{
+  "seller": "nozzle.io",
+  "seller_name": "Nozzle",
+  "made_by": "hand",
+  "sells": "Enterprise SERP tracking and search competitive intelligence: it records whole Google result pages (including AI Overviews), measures share of voice against competitors, and exports everything to BigQuery.",
+  "buyers": "Companies where organic search is a real revenue channel and someone owns SEO: e-commerce, marketplaces, real estate, automotive, finance and multi-location brands, plus SEO agencies and data teams that want raw search data. Pricing from roughly $250 to $5,000 a month points at mid-market and enterprise teams, not solo sites.",
+  "buyer_roles": [
+    "Head of SEO",
+    "SEO Manager",
+    "SEO Director",
+    "Head of Content",
+    "VP Marketing",
+    "Head of Growth",
+    "Marketing Analytics Lead"
+  ],
+  "hire_keywords": [
+    "seo",
+    "search engine optimization",
+    "organic search",
+    "organic growth",
+    "search marketing",
+    "content marketing",
+    "content strategy",
+    "head of content",
+    "web analytics",
+    "marketing analytics",
+    "ai search",
+    "search visibility"
+  ],
+  "exclude_title_words": [
+    "intern",
+    "internship",
+    "recruiter",
+    "account executive",
+    "paid",
+    "ppc",
+    "sem",
+    "programmatic",
+    "social",
+    "assistant",
+    "product manager",
+    "design",
+    "designer",
+    "video",
+    "events"
+  ],
+  "hire_reason": "Hiring for SEO, content or search marketing means they're building the team that would use Nozzle to track rankings and competitors.",
+  "form_d_industry_groups": [
+    "Other Technology",
+    "Retailing",
+    "Business Services",
+    "Other Banking and Financial Services"
+  ],
+  "min_raise_usd": 5000000,
+  "max_raise_usd": 250000000,
+  "startups_only": true,
+  "funding_reason": "Fresh money usually goes into growth, and organic search is one of the first channels a funded company scales.",
+  "example_buyers": [
+    {
+      "name": "Zillow",
+      "domain": "zillow.com"
+    },
+    {
+      "name": "Redfin",
+      "domain": "redfin.com"
+    },
+    {
+      "name": "Carvana",
+      "domain": "carvana.com"
+    },
+    {
+      "name": "Wayfair",
+      "domain": "wayfair.com"
+    },
+    {
+      "name": "Chewy",
+      "domain": "chewy.com"
+    },
+    {
+      "name": "NerdWallet",
+      "domain": "nerdwallet.com"
+    },
+    {
+      "name": "Thumbtack",
+      "domain": "thumbtack.com"
+    },
+    {
+      "name": "G2",
+      "domain": "g2.com"
+    },
+    {
+      "name": "Webflow",
+      "domain": "webflow.com"
+    },
+    {
+      "name": "Grammarly",
+      "domain": "grammarly.com"
+    },
+    {
+      "name": "Calendly",
+      "domain": "calendly.com"
+    },
+    {
+      "name": "Airbnb",
+      "domain": "airbnb.com"
+    },
+    {
+      "name": "Instacart",
+      "domain": "instacart.com"
+    },
+    {
+      "name": "Faire",
+      "domain": "faire.com"
+    },
+    {
+      "name": "Brex",
+      "domain": "brex.com"
+    },
+    {
+      "name": "Gusto",
+      "domain": "gusto.com"
+    },
+    {
+      "name": "Lattice",
+      "domain": "lattice.com"
+    },
+    {
+      "name": "Udemy",
+      "domain": "udemy.com"
+    }
+  ]
+}

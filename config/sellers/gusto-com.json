@@ -1,0 +1,154 @@
+{
+  "seller": "gusto.com",
+  "seller_name": "Gusto",
+  "sells": "Gusto provides cloud-based payroll, benefits, human resources, and compliance software for small and growing businesses.",
+  "buyers": "Small businesses, startups, and growing companies buy Gusto to streamline their human resources operations, manage employee payroll, and administer employee benefits like health insurance and 401(k) plans. They choose Gusto because it automates complex tax filings and compliance, saving administrative time and keeping them compliant as they scale.",
+  "buyer_roles": [
+    "Head of People",
+    "People Operations Manager",
+    "Chief People Officer",
+    "VP of Human Resources",
+    "HR Generalist",
+    "Head of Talent",
+    "Founder",
+    "Chief Executive Officer",
+    "Chief Financial Officer",
+    "Controller"
+  ],
+  "hire_keywords": [
+    "head of people",
+    "hr generalist",
+    "hr manager",
+    "human resources",
+    "payroll specialist",
+    "people operations",
+    "people team",
+    "talent operations"
+  ],
+  "exclude_title_words": [
+    "acquisition",
+    "assistant",
+    "benefits",
+    "compensation",
+    "diversity",
+    "intern",
+    "learning",
+    "legal",
+    "recruiter"
+  ],
+  "hire_reason": "Hiring for people operations and HR roles indicates the company is formalizing its internal HR function and actively managing a growing team that requires automated payroll and benefits administration.",
+  "form_d_industry_groups": [
+    "Business Services",
+    "Commercial",
+    "Computers",
+    "Other Technology",
+    "Investing",
+    "Retailing",
+    "Manufacturing",
+    "Construction",
+    "Restaurants"
+  ],
+  "min_raise_usd": 100000,
+  "max_raise_usd": 15000000,
+  "startups_only": true,
+  "funding_reason": "A fresh funding round provides new capital to quickly hire employees and set up formal payroll, tax compliance, and health benefits infrastructure.",
+  "example_buyers": [
+    {
+      "name": "Loom",
+      "domain": "loom.com"
+    },
+    {
+      "name": "Notion",
+      "domain": "notion.so"
+    },
+    {
+      "name": "Figma",
+      "domain": "figma.com"
+    },
+    {
+      "name": "Webflow",
+      "domain": "webflow.com"
+    },
+    {
+      "name": "Vanta",
+      "domain": "vanta.com"
+    },
+    {
+      "name": "Ramp",
+      "domain": "ramp.com"
+    },
+    {
+      "name": "Brex",
+      "domain": "brex.com"
+    },
+    {
+      "name": "Retool",
+      "domain": "retool.com"
+    },
+    {
+      "name": "Postman",
+      "domain": "postman.com"
+    },
+    {
+      "name": "Linear",
+      "domain": "linear.app"
+    },
+    {
+      "name": "Cal.com",
+      "domain": "cal.com"
+    },
+    {
+      "name": "Supabase",
+      "domain": "supabase.com"
+    },
+    {
+      "name": "Prisma",
+      "domain": "prisma.io"
+    },
+    {
+      "name": "Railway",
+      "domain": "railway.app"
+    },
+    {
+      "name": "Render",
+      "domain": "render.com"
+    },
+    {
+      "name": "Pinecone",
+      "domain": "pinecone.io"
+    },
+    {
+      "name": "Weights & Biases",
+      "domain": "wandb.ai"
+    },
+    {
+      "name": "Anyscale",
+      "domain": "anyscale.com"
+    },
+    {
+      "name": "Modal",
+      "domain": "modal.com"
+    },
+    {
+      "name": "Replicate",
+      "domain": "replicate.com"
+    },
+    {
+      "name": "PostHog",
+      "domain": "posthog.com"
+    },
+    {
+      "name": "Mixpanel",
+      "domain": "mixpanel.com"
+    },
+    {
+      "name": "Amplitude",
+      "domain": "amplitude.com"
+    },
+    {
+      "name": "Checkr",
+      "domain": "checkr.com"
+    }
+  ],
+  "made_by": "gemini, from what it knows (site blocked us) - check it"
+}

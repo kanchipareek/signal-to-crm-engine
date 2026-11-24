@@ -1,0 +1,19 @@
+{
+  "seller": "theirdomain.com",
+  "seller_name": "Their Company",
+  "made_by": "hand",
+  "sells": "one sentence: what they sell",
+  "buyers": "two or three sentences: which companies buy it and why",
+  "buyer_roles": ["job titles of the people who buy or use it"],
+  "hire_keywords": ["short lowercase phrases that, in a job title, mean a company is building the team that buys this"],
+  "exclude_title_words": ["intern", "assistant", "recruiter"],
+  "hire_reason": "Hiring for ... means ...",
+  "form_d_industry_groups": ["Other Technology"],
+  "min_raise_usd": 5000000,
+  "max_raise_usd": 250000000,
+  "startups_only": true,
+  "funding_reason": "why a fresh raise makes a company a good lead for them",
+  "example_buyers": [
+    {"name": "Some Company", "domain": "somecompany.com"}
+  ]
+}

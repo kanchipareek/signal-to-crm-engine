@@ -18,3 +18,7 @@ ref_kit/
 node_modules/
 package.json
 package-lock.json
+
+# lead lists (they name real people)
+leads/
+leads_run_*.log

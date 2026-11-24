@@ -167,13 +167,25 @@ some sites block scripts (gusto.com sends a 403 to anything automated). when tha
 
 i went with gemini because the free tier is enough for this. it's one call per seller, and only public website text gets sent. on the free tier google can use that text to improve its products, which is fine for public pages. any llm would do. gemini is just the free one.
 
-### my first run
+### my test runs
 
-i tested it on nozzle.io (an seo tracking tool), with a profile i wrote by hand because i didn't have a key yet. over the last 14 days of form ds it went through 1,620 filings, kept 388 after dropping funds and llcs, and found 43 companies that raised $5m+ in nozzle's industries. with my account list added, that came out to 49 leads, and 45 of them had founder names from their filing. the top one was the kind of lead i wanted: zeely raised $17m and is hiring a marketing analytics lead.
+**siege media (an seo and content agency), with gemini.** i gave it `siegemedia.com` and nothing else. gemini read their site and worked out that they sell seo, content and digital pr to b2b saas, fintech and e-commerce companies that rely on organic traffic. it picked seo, content and digital pr job titles as the hiring signals, left out paid and social roles, and set the raise range at $2m–$50m. the run went through the same 1,620 form ds, found 73 companies that raised in those industries, and came out with 85 leads.
 
-it also showed me what's still weak:
+gemini's profile was a good start, but it was a bit too generous:
 
-- **raised doesn't mean they're a fit.** form d's "other technology" covers saas, robotics and biotech alike, so a robotics company that raised $30m still shows up as a nozzle lead. hiring signals are much more targeted. the next step is a fit check on each lead's homepage.
+- it added biotechnology and health care as industries, so biotech companies like abvc biopharma came through as leads for an seo agency. they raised money, but they're not siege media's buyers.
+- it picked keywords like "brand marketing" and "demand generation", so a "brand marketing lead" job counted as a buying signal.
+
+the fix for now is to open `config/sellers/siegemedia-com.json`, cut those, and re-run. the saved profile gets reused, so it doesn't call gemini again. the better fix is the fit check below.
+
+**gusto (payroll and hr), with gemini.** their site blocks scripts, so gemini wrote the profile from what it already knows: small businesses and startups, with hiring signals like head of people, hr manager and people ops. that's very different from an seo agency's, which is the point. the profile is marked `check it`.
+
+**nozzle.io (an seo tracking tool), by hand.** i tested it on nozzle.io (an seo tracking tool), with a profile i wrote by hand because i didn't have a key yet. over the last 14 days of form ds it went through 1,620 filings, kept 388 after dropping funds and llcs, and found 43 companies that raised $5m+ in nozzle's industries. with my account list added, that came out to 49 leads, and 45 of them had founder names from their filing. the top one was the kind of lead i wanted: zeely raised $17m and is hiring a marketing analytics lead.
+
+what all three runs showed is still weak:
+
+- **raised doesn't mean they're a fit.** form d's "other technology" covers saas, robotics and biotech alike, so a robotics company that raised $30m still shows up as a nozzle lead. hiring signals are much more targeted. the next step is a fit check, where gemini reads each lead's homepage and says if it really matches the seller's buyers.
+- **funding-only leads all get the same score,** so past the top few the list is basically alphabetical. the fit check would fix that too.
 - **about a quarter of the funded companies had no website i could confirm.** the founders' names are still there, so you can search for them.
 - **the website guess can be wrong.** alcar inc. (darien, ct) first got matched to a swedish alcar.se. i fixed that one (redirects to foreign domains are rejected now), but guessed sites still need a look.
 - **hiring is only checked at companies it already found.** there's no list of every job board out there.

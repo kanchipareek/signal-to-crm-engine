@@ -80,7 +80,9 @@ Return ONLY a JSON object with exactly these fields:
   "sells": "one sentence: what they sell",
   "buyers": "two or three sentences: which companies buy this and why",
   "buyer_roles": ["job titles of the people who would buy or use it, e.g. 'Head of SEO'"],
-  "hire_keywords": ["8 to 15 short lowercase phrases that, if they appear in a JOB TITLE at a company, mean that company is building the team that would buy this. Be specific to this product: for an SEO tool, 'seo' and 'organic search', not 'growth marketing' or 'digital marketing', which match almost every marketing job. Never use words like 'manager', 'lead' or 'engineer' on their own."],
+  "competitors": ["domains of companies that sell something similar - they are never leads"],
+  "news_queries": ["3 to 6 short phrases describing the BUYER companies' own businesses, used to search funding news, e.g. for a document-parsing api: 'legal ai', 'insurance claims automation', 'fintech document processing'. Describe what the buyers do, not what the seller does."],
+  "hire_keywords": ["8 to 15 short lowercase phrases that, if they appear in a JOB TITLE at a company, mean that company is building the team that would buy this. Be specific to this product: for an SEO tool, 'seo' and 'organic search', not 'growth marketing' or 'digital marketing', which match almost every marketing job. Never use words like 'manager', 'lead' or 'engineer' on their own. If the product is a developer or AI tool, don't use titles every tech company hires ('machine learning', 'llm', 'ai engineer') - pick titles that show the specific need, e.g. 'document processing', 'data extraction', 'intelligent automation'."],
   "exclude_title_words": ["lowercase words that mean a matching title is NOT a buying signal: 'intern', 'assistant', 'recruiter', and words for neighbouring jobs this product doesn't serve (for an SEO tool: 'paid', 'ppc', 'social', 'design')"],
   "hire_reason": "one sentence, starting with 'Hiring for', on why such a hire makes them a good lead",
   "form_d_industry_groups": ["pick ONLY from this list: {groups}"],
@@ -88,7 +90,7 @@ Return ONLY a JSON object with exactly these fields:
   "max_raise_usd": a whole number, the largest raise that still fits (big enterprises may be out of reach),
   "startups_only": true if they mainly sell to startups and scaleups, else false,
   "funding_reason": "one sentence on why a fresh raise makes a company a good lead for them",
-  "example_buyers": [{{"name": "company", "domain": "company.com"}}, ... 20 to 30 real US startups or scaleups that are likely buyers. Only include companies you are confident exist, with their real domain.]
+  "example_buyers": [{{"name": "company", "domain": "company.com"}}, ... 20 to 30 real startups or scaleups that would PAY for this product as customers. Not famous companies in the same space, not peers, not competitors, not big AI labs or platforms that would build it themselves. Think of who is in the seller's customer logos and case studies, and companies like them. Only include companies you are confident exist, with their real domain.]
 }}
 
 Website text:
@@ -128,6 +130,11 @@ def clean(profile):
     profile.setdefault("startups_only", True)
     profile.setdefault("example_buyers", [])
     profile.setdefault("buyer_roles", [])
+    profile.setdefault("competitors", [])
+    profile.setdefault("news_queries", [])
+    competitors = {c.lower().removeprefix("www.") for c in profile["competitors"]}
+    profile["example_buyers"] = [b for b in profile["example_buyers"]
+                                 if (b.get("domain") or "").lower().removeprefix("www.") not in competitors]
     return profile
 
 

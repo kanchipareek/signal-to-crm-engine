@@ -1,0 +1,148 @@
+{
+  "seller": "webflow.com",
+  "seller_name": "Webflow",
+  "sells": "Webflow is an AI-native visual web development and content management platform that allows marketing, design, and engineering teams to build, manage, and optimize enterprise-grade websites without relying on heavy coding.",
+  "buyers": "Modern businesses, tech companies, and digital agencies buy Webflow to empower their marketing and design teams to launch high-converting websites, landing pages, and content hubs rapidly. They buy it to eliminate developer bottlenecks, scale organic search and localization, and maintain brand consistency across web properties.",
+  "buyer_roles": [
+    "Head of Marketing",
+    "Web Designer",
+    "Creative Director",
+    "Head of Brand",
+    "Growth Marketing Manager",
+    "Content Marketing Manager",
+    "Frontend Developer",
+    "Web Operations Manager",
+    "Digital Marketing Director"
+  ],
+  "hire_keywords": [
+    "brand marketing",
+    "content marketing",
+    "demand generation",
+    "digital marketing",
+    "growth marketing",
+    "organic search",
+    "performance marketing",
+    "product marketing",
+    "seo",
+    "web design",
+    "web development"
+  ],
+  "exclude_title_words": [
+    "account executive",
+    "assistant",
+    "customer success",
+    "finance",
+    "hardware",
+    "hr",
+    "intern",
+    "legal",
+    "recruiter",
+    "sales",
+    "support"
+  ],
+  "hire_reason": "Hiring for marketing, design, and web roles signals that the company is actively investing in its digital presence, content generation, and brand growth, making them an ideal fit for a visual web building and CMS platform.",
+  "form_d_industry_groups": [
+    "Commercial",
+    "Computers",
+    "Other Technology",
+    "Business Services",
+    "Retailing",
+    "Telecommunications",
+    "Other Banking and Financial Services"
+  ],
+  "min_raise_usd": 2000000,
+  "max_raise_usd": 100000000,
+  "startups_only": false,
+  "funding_reason": "A fresh funding round provides growing companies with the capital needed to scale their digital marketing operations, upgrade their tech stack, and hire marketing talent who will adopt web platforms like Webflow.",
+  "example_buyers": [
+    {
+      "name": "Copy.ai",
+      "domain": "copy.ai"
+    },
+    {
+      "name": "Anrok",
+      "domain": "anrok.com"
+    },
+    {
+      "name": "Zenchef",
+      "domain": "zenchef.com"
+    },
+    {
+      "name": "commercetools",
+      "domain": "commercetools.com"
+    },
+    {
+      "name": "Loom",
+      "domain": "loom.com"
+    },
+    {
+      "name": "Vercel",
+      "domain": "vercel.com"
+    },
+    {
+      "name": "Retool",
+      "domain": "retool.com"
+    },
+    {
+      "name": "Figma",
+      "domain": "figma.com"
+    },
+    {
+      "name": "Miro",
+      "domain": "miro.com"
+    },
+    {
+      "name": "Notion",
+      "domain": "notion.so"
+    },
+    {
+      "name": "Airtable",
+      "domain": "airtable.com"
+    },
+    {
+      "name": "Postman",
+      "domain": "postman.com"
+    },
+    {
+      "name": "Lambda Test",
+      "domain": "lambdatest.com"
+    },
+    {
+      "name": "Pitch",
+      "domain": "pitch.com"
+    },
+    {
+      "name": "Typeform",
+      "domain": "typeform.com"
+    },
+    {
+      "name": "Personio",
+      "domain": "personio.com"
+    },
+    {
+      "name": "Deliverect",
+      "domain": "deliverect.com"
+    },
+    {
+      "name": "Outreach",
+      "domain": "outreach.io"
+    },
+    {
+      "name": "Gong",
+      "domain": "gong.io"
+    },
+    {
+      "name": "Cachet",
+      "domain": "cachet.io"
+    },
+    {
+      "name": "Census",
+      "domain": "getcensus.com"
+    },
+    {
+      "name": "Hightouch",
+      "domain": "hightouch.com"
+    }
+  ],
+  "made_by": "gemini, from their website"
+}

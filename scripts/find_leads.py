@@ -9,10 +9,13 @@
        to the seller's buyers (industry, raise size, company type)
      - the companies in config/boards.csv
      - the example buyers in the seller profile
+     - companies whose raise was in the news (worldwide - form d is us only)
 3. checks each one for signals:
-     - funding: a Form D in the window, with the amount
+     - funding: a Form D or a news story in the window, with the amount
      - hiring: open jobs on greenhouse or ashby whose title matches the
        seller's buyer roles (e.g. "Head of SEO" for an SEO tool)
+   then a fit check: gemini reads what each company does and says if it would
+   actually buy from the seller. 'no' gets dropped (peers, competitors, wrong market).
 4. writes a ranked lead list with the reasons and the people on the company's
    SEC filing (usually the founders and CEO) to leads/<seller>-<date>.md / .csv
 """
@@ -29,8 +32,10 @@ sys.path.insert(0, str(ROOT))
 from scripts.run_detector import load_env
 from src.fetch import FetchError, fetch_postings
 from src.funding import classify, format_usd, load_rule
-from src.leads import (find_board, find_domain, looks_like_fund, match_hires, sec_by_name,
-                       score, site_exists, why)
+from src.fit import check_fit
+from src.leads import (find_board, find_domain, looks_like_fund, match_hires, name_core,
+                       sec_by_name, score, site_exists, why)
+from src.news import extract_raises, search_headlines
 from src.llm import LLMError
 from src.sec import fetch_form_d, filing_url, list_form_d, search_recent_form_d
 from src.seller import load_or_build, profile_path, slug
@@ -98,10 +103,33 @@ def scan_form_d(profile, days, max_filings):
         by_cik[r["cik"]] = {
             "name": filing["entity_name"] or r["name"], "cik": r["cik"], "domain": None,
             "location": r["location"], "funding": funding, "people": filing["people"],
+            "industry_group": filing["industry_group"],
             "people_from": f"form d filed {r['filing_date']}", "found_via": "raised (sec form d)",
         }
     log(f"  {len(by_cik)} companies raised {format_usd(profile['min_raise_usd'])}+ in the seller's industries")
     return list(by_cik.values())
+
+
+def from_news(profile, days):
+    """Companies whose raise was reported in the news in the window."""
+    headlines = search_headlines(profile, days)
+    log(f"  {len(headlines)} funding headlines from google news")
+    if not headlines:
+        return []
+    raises = extract_raises(headlines)
+    out = []
+    for r in raises:
+        if r["amount"] and (r["amount"] < profile["min_raise_usd"] // 2 or not fits_raise(r["amount"], profile)):
+            continue  # clearly outside the seller's range (half the minimum, since amounts get rounded)
+        out.append({
+            "name": r["company"], "domain": None, "location": r["country"] or "",
+            "what_they_do": r["what_they_do"],
+            "funding": {"amount": r["amount"], "date": r["date"], "url": r["url"],
+                        "source": "news", "headline": r["headline"]},
+            "found_via": "raised (in the news)",
+        })
+    log(f"  {len(raises)} raises in the headlines, {len(out)} in the seller's range")
+    return out
 
 
 def from_lists(profile):
@@ -149,7 +177,8 @@ def enrich(c, profile, rule):
                     latest = {**fetch_form_d(c["cik"], originals[0]["accession"]), **originals[0]}
                     c["people"] = latest["people"]
                     c["people_from"] = f"form d filed {latest['filing_date']} (matched by exact name: {c['sec_name']})"
-                    c["funding"] = funding_from(latest, c["cik"], rule, profile)
+                    if not c.get("funding"):  # don't overwrite a raise we already know from the news
+                        c["funding"] = funding_from(latest, c["cik"], rule, profile)
     except Exception as exc:  # one bad company shouldn't stop the run
         c["error"] = f"{type(exc).__name__}: {exc}"
     return c
@@ -161,16 +190,16 @@ def people_text(people):
     return "; ".join(f"{p['name']} ({', '.join(p['roles']) or 'listed'})" for p in people or [])
 
 
-def write_report(profile, leads, days):
+def write_report(profile, leads, days, rejected=()):
     OUT_DIR.mkdir(exist_ok=True)
     stem = OUT_DIR / f"{slug(profile['seller'])}-{date.today().isoformat()}"
     with stem.with_suffix(".csv").open("w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
-        w.writerow(["score", "company", "website", "location", "raised", "raised_on", "hiring",
+        w.writerow(["score", "fit", "company", "website", "location", "raised", "raised_on", "hiring",
                     "people", "why", "evidence", "found_via"])
         for l in leads:
             f = l.get("funding") or {}
-            w.writerow([l["score"], l["name"], l.get("domain") or "", l.get("location") or "",
+            w.writerow([l["score"], l.get("fit", ""), l["name"], l.get("domain") or "", l.get("location") or "",
                         f.get("amount") or "", f.get("date") or "",
                         " | ".join(h["title"] for h in l["hires"]), people_text(l.get("people")),
                         " ".join(l["why"]),
@@ -197,12 +226,21 @@ def write_report(profile, leads, days):
         if l.get("people"):
             lines.append(f"- **people on their sec filing:** {people_text(l['people'])} ({l['people_from']})")
         else:
-            lines.append("- **people:** none found (no matching sec filing)")
+            lines.append("- **people:** not found. there's no matching sec filing, so check their site or linkedin")
         if l.get("funding"):
-            lines.append(f"- **filing:** {l['funding']['url']}")
+            label = "news" if l["funding"].get("source") == "news" else "filing"
+            lines.append(f"- **{label}:** {l['funding']['url']}")
         for h in l["hires"][:5]:
             lines.append(f"- **job:** [{h['title']}]({h['source_url']})")
         lines.append(f"- **found via:** {l['found_via']}")
+        lines.append("")
+    if rejected:
+        lines.append(f"## dropped by the fit check ({len(rejected)})")
+        lines.append("")
+        lines.append("these had a signal, but gemini didn't think they'd buy. in case it got one wrong:")
+        lines.append("")
+        for l in rejected:
+            lines.append(f"- {l['name']} ({l.get('domain') or 'no website'}): {l.get('fit_reason') or 'no reason given'}")
         lines.append("")
     stem.with_suffix(".md").write_text("\n".join(lines), encoding="utf-8")
     return stem
@@ -215,6 +253,8 @@ def main():
     ap.add_argument("--max-filings", type=int, default=500, help="cap on form d filings to read (default 500)")
     ap.add_argument("--no-scan", action="store_true", help="skip the form d scan, only check the lists")
     ap.add_argument("--refresh-profile", action="store_true", help="rebuild the seller profile from their site")
+    ap.add_argument("--no-news", action="store_true", help="skip the google news funding search")
+    ap.add_argument("--no-fit-check", action="store_true", help="keep every lead with a signal, don't ask gemini about fit")
     ap.add_argument("--workers", type=int, default=6)
     args = ap.parse_args()
     load_env()
@@ -237,6 +277,12 @@ def main():
 
     log("2. gathering companies")
     cands = [] if args.no_scan else scan_form_d(profile, args.days, args.max_filings)
+    if not args.no_news:
+        try:
+            have = {tuple(name_core(c["name"])) for c in cands}
+            cands += [c for c in from_news(profile, args.days) if tuple(name_core(c["name"])) not in have]
+        except LLMError as exc:
+            log(f"  ! skipped the news search: {exc}")
     known = {c["name"].lower() for c in cands}
     for c in from_lists(profile):  # one entry per company, even if it's on both lists
         keys = {c["name"].lower(), (c.get("domain") or "").lower()} - {""}
@@ -251,10 +297,21 @@ def main():
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         done = list(pool.map(lambda c: enrich(c, profile, rule), cands))
 
+    with_signal = [c for c in done if not c.get("dropped") and (c.get("funding") or c.get("hires"))]
+    rejected = []
+    if with_signal and not args.no_fit_check:
+        log(f"  fit check on {len(with_signal)} companies with a signal")
+        try:
+            failed = check_fit(with_signal, profile)
+            if failed:
+                log(f"  ! {failed} fit-check batches failed twice, those companies stay as 'maybe'")
+            rejected = [c for c in with_signal if c["fit"] == "no"]
+            with_signal = [c for c in with_signal if c["fit"] != "no"]
+            log(f"  {len(rejected)} dropped as not a fit, {sum(c['fit'] == 'yes' for c in with_signal)} clear fits")
+        except LLMError as exc:
+            log(f"  ! fit check skipped: {exc}")
     leads = []
-    for c in done:
-        if c.get("dropped") or not (c.get("funding") or c.get("hires")):
-            continue
+    for c in with_signal:
         c["score"] = score(c)
         c["why"] = why(c, profile, format_usd)
         leads.append(c)
@@ -262,7 +319,7 @@ def main():
     errors = [c for c in done if c.get("error")]
     dropped = [c for c in done if c.get("dropped")]
 
-    stem = write_report(profile, leads, args.days)
+    stem = write_report(profile, leads, args.days, rejected)
     log(f"4. {len(leads)} leads -> {stem.relative_to(ROOT)}.md / .csv")
     if dropped:
         log(f"  dropped {len(dropped)} suggested buyers whose website didn't load")
@@ -271,11 +328,12 @@ def main():
     for l in leads[:15]:
         bits = []
         if l.get("funding"):
-            bits.append(f"raised {format_usd(l['funding']['amount'])}")
+            amt = l["funding"].get("amount")
+            bits.append(f"raised {format_usd(amt) if amt else '?'}" + (" (news)" if l["funding"].get("source") == "news" else ""))
         if l["hires"]:
             bits.append(f"hiring {l['hires'][0]['title']}" + (f" +{len(l['hires']) - 1}" if len(l["hires"]) > 1 else ""))
         who = l["people"][0]["name"] if l.get("people") else "-"
-        log(f"  {l['score']:2}  {l['name'][:28]:28} {(l.get('domain') or '?')[:22]:22} {', '.join(bits)[:60]:60} {who}")
+        log(f"  {l['score']:2} {l.get('fit', '-'):5} {l['name'][:26]:26} {(l.get('domain') or '?')[:22]:22} {', '.join(bits)[:60]:60} {who}")
 
 
 if __name__ == "__main__":

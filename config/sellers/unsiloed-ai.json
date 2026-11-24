@@ -1,0 +1,144 @@
+{
+  "seller": "unsiloed.ai",
+  "seller_name": "Unsiloed AI",
+  "sells": "Unsiloed AI provides document parsing, extraction, and splitting APIs built on dual-stream vision models to convert PDFs, images, and spreadsheets into structured JSON and Markdown for LLMs and AI agents.",
+  "buyers": "Fintechs, legal tech platforms, healthcare software companies, and logistics applications buy this to automate the ingestion and processing of complex documents like financial statements, legal contracts, medical records, and shipping invoices. They need robust data extraction that preserves tables, layouts, and hierarchical structures to feed their AI agents and LLM pipelines.",
+  "buyer_roles": [
+    "Head of AI",
+    "Head of Engineering",
+    "Chief Technology Officer",
+    "VP of Product",
+    "Lead AI Developer",
+    "Data Engineering Lead"
+  ],
+  "competitors": [
+    "llamaparse.ai",
+    "mindee.com",
+    "veryfi.com",
+    "rossum.ai",
+    "docparser.com",
+    "instabase.com"
+  ],
+  "news_queries": [
+    "legal ai",
+    "insurance claims automation",
+    "fintech document processing",
+    "mortgage automation platform",
+    "healthcare revenue cycle management",
+    "logistics invoice automation"
+  ],
+  "hire_keywords": [
+    "claims automation",
+    "contract analysis",
+    "data extraction",
+    "document processing",
+    "intelligent automation",
+    "invoice processing",
+    "ocr",
+    "pdf parsing"
+  ],
+  "exclude_title_words": [
+    "assistant",
+    "devops",
+    "frontend",
+    "intern",
+    "marketing",
+    "mobile",
+    "recruiter",
+    "sales",
+    "security"
+  ],
+  "hire_reason": "Hiring for specialized data extraction or document automation roles indicates the company is actively building or scaling AI workflows that require advanced PDF and spreadsheet parsing.",
+  "form_d_industry_groups": [
+    "Business Services",
+    "Computers",
+    "Other Technology",
+    "Other Banking and Financial Services",
+    "Commercial",
+    "Health Insurance",
+    "Other Health Care"
+  ],
+  "min_raise_usd": 1000000,
+  "max_raise_usd": 30000000,
+  "startups_only": true,
+  "funding_reason": "A fresh funding round provides startups with the capital needed to build production-grade AI agents and document processing pipelines, scaling their API consumption.",
+  "example_buyers": [
+    {
+      "name": "Klarity",
+      "domain": "klarity.com"
+    },
+    {
+      "name": "Inscribe",
+      "domain": "inscribe.ai"
+    },
+    {
+      "name": "Ocrolus",
+      "domain": "ocrolus.com"
+    },
+    {
+      "name": "Indyx",
+      "domain": "myindyx.com"
+    },
+    {
+      "name": "Hyperscience",
+      "domain": "hyperscience.com"
+    },
+    {
+      "name": "Sensible",
+      "domain": "sensible.so"
+    },
+    {
+      "name": "Base",
+      "domain": "base.app"
+    },
+    {
+      "name": "Nanonets",
+      "domain": "nanonets.com"
+    },
+    {
+      "name": "Tali",
+      "domain": "tali.ai"
+    },
+    {
+      "name": "Robin AI",
+      "domain": "robinai.com"
+    },
+    {
+      "name": "LegalOn Technologies",
+      "domain": "legalontech.com"
+    },
+    {
+      "name": "Civic",
+      "domain": "civic.com"
+    },
+    {
+      "name": "Trullion",
+      "domain": "trullion.com"
+    },
+    {
+      "name": "Numeric",
+      "domain": "numeric.io"
+    },
+    {
+      "name": "Anrok",
+      "domain": "anrok.com"
+    },
+    {
+      "name": "TaxBit",
+      "domain": "taxbit.com"
+    },
+    {
+      "name": "Alloy",
+      "domain": "alloy.com"
+    },
+    {
+      "name": "Sardine",
+      "domain": "sardine.ai"
+    },
+    {
+      "name": "Unit",
+      "domain": "unit.co"
+    }
+  ],
+  "made_by": "gemini, from their website"
+}

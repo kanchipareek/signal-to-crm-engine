@@ -22,7 +22,7 @@ cd signal-to-crm-engine
 python -m venv .venv
 source .venv/bin/activate          # windows (git bash): source .venv/Scripts/activate
 pip install -r requirements.txt
-python -m pytest tests/ -q         # 125 passed
+python -m pytest tests/ -q         # 137 passed
 ```
 
 ### trying it without project 1
@@ -146,10 +146,14 @@ python scripts/find_leads.py theirdomain.com
 what it does:
 
 1. **works out who they sell to.** it reads their homepage, pricing, customers and about pages, and gemini writes a profile: what they sell, who buys it, which job titles mean a company is building the team that would buy it, and what size of raise means there's budget. it saves this to `config/sellers/<their-domain>.json` so i can read it, fix it, and re-run without asking gemini again.
-2. **finds companies that could be buyers.** every company that filed a form d in the last 14 days, cut down to real raises in the seller's industries (funds, llcs and amendments dropped), plus my account list and 20 to 30 likely buyers from the profile.
+2. **finds companies that could be buyers.**
+   - every company that filed a form d in the last 14 days, cut down to real raises in the seller's industries (funds, llcs and amendments dropped).
+   - raises in the news, worldwide. it searches google news for funding headlines, some general and some aimed at the seller's buyers ("legal ai raises"), and gemini pulls out the company, the amount and what it does.
+   - my account list, and 20 to 30 likely buyers from the profile. competitors are never on that list.
 3. **checks each one for signals.**
    - funding: a form d in the window, with the amount.
    - hiring: open jobs on their greenhouse or ashby board whose titles match the seller's buyers. for an seo tool that's "head of seo", not "paid social manager".
+   then a **fit check**: gemini reads what each company does (its homepage, or the news headlines) and says yes, maybe or no on whether it would actually buy from the seller, with a one-line reason. "no" gets dropped, and the report lists those at the bottom in case it got one wrong. a clear fit ranks above a company with more signals but an unclear fit.
 4. **writes a ranked lead list** to `leads/<seller>-<date>.md` and `.csv`: the company, its website, why it fits, links to the filing and job posts as proof, and the people on its sec filing. for a startup those are almost always the founders and the ceo. raised and hiring ranks highest.
 
 form d gives a legal name, not a website, so i guess the domain from the name (`Deep Cogito Inc.` → `deepcogito.com`) and check the homepage actually belongs to them. parked domains and redirects somewhere else get rejected. guessed websites are labelled in the report so i know to double check them.
@@ -169,6 +173,20 @@ i went with gemini because the free tier is enough for this. it's one call per s
 
 ### my test runs
 
+**unsiloed.ai (a document-parsing api), with gemini. this run made me add the news search and the fit check.** the first time i ran it, two things were wrong:
+
+- it missed perry ai, which had just raised $2.2m for ai legal software that reads fund documents. that's exactly unsiloed's buyer. perry is a london company, so it never filed a form d, but six outlets covered the raise. form d alone can't see raises like that.
+- it ranked perplexity, anthropic and scale ai near the top. gemini's likely buyers were famous ai companies, one of them a competitor (llamaindex sells its own parser), and its hiring keywords ("machine learning", "llm") matched every ai company. they had signals, but they'd never buy a parsing api.
+
+after the fixes, the same run:
+
+- went through 1,620 form ds and 284 funding headlines from google news (130 raises worldwide), and had 166 companies with a signal.
+- the fit check dropped 76 of them, each with a reason, like *"focuses on brain-computer interfaces rather than document parsing"* or *"builds social humanoid robots"*. perplexity, anthropic and scale are gone.
+- that left 90 leads, 22 of them clear fits. perry ai is one of the top 15: *"legal tech platform providing ai-powered legal software that requires contract ingestion and processing"*, $2.2m seed, found in the news. lawster (legal) and pedestal ai are up there too.
+- gemini's new profile lists competitors to skip and names real document-heavy companies as likely buyers (klarity, ocrolus, robin ai, inscribe). its hiring keywords are specific: "contract analysis", "claims automation", "pdf parsing".
+
+one fit-check batch came back as broken json twice. those 15 companies stayed as "maybe" instead of crashing the run.
+
 **siege media (an seo and content agency), with gemini.** i gave it `siegemedia.com` and nothing else. gemini read their site and worked out that they sell seo, content and digital pr to b2b saas, fintech and e-commerce companies that rely on organic traffic. it picked seo, content and digital pr job titles as the hiring signals, left out paid and social roles, and set the raise range at $2m–$50m. the run went through the same 1,620 form ds, found 73 companies that raised in those industries, and came out with 85 leads.
 
 gemini's profile was a good start, but it was a bit too generous:
@@ -176,16 +194,17 @@ gemini's profile was a good start, but it was a bit too generous:
 - it added biotechnology and health care as industries, so biotech companies like abvc biopharma came through as leads for an seo agency. they raised money, but they're not siege media's buyers.
 - it picked keywords like "brand marketing" and "demand generation", so a "brand marketing lead" job counted as a buying signal.
 
-the fix for now is to open `config/sellers/siegemedia-com.json`, cut those, and re-run. the saved profile gets reused, so it doesn't call gemini again. the better fix is the fit check below.
+the fit check now catches leads like that. you can also open `config/sellers/siegemedia-com.json`, cut those, and re-run. the saved profile gets reused, so it doesn't call gemini again.
 
 **gusto (payroll and hr), with gemini.** their site blocks scripts, so gemini wrote the profile from what it already knows: small businesses and startups, with hiring signals like head of people, hr manager and people ops. that's very different from an seo agency's, which is the point. the profile is marked `check it`.
 
 **nozzle.io (an seo tracking tool), by hand.** i tested it on nozzle.io (an seo tracking tool), with a profile i wrote by hand because i didn't have a key yet. over the last 14 days of form ds it went through 1,620 filings, kept 388 after dropping funds and llcs, and found 43 companies that raised $5m+ in nozzle's industries. with my account list added, that came out to 49 leads, and 45 of them had founder names from their filing. the top one was the kind of lead i wanted: zeely raised $17m and is hiring a marketing analytics lead.
 
-what all three runs showed is still weak:
+what's still weak:
 
-- **raised doesn't mean they're a fit.** form d's "other technology" covers saas, robotics and biotech alike, so a robotics company that raised $30m still shows up as a nozzle lead. hiring signals are much more targeted. the next step is a fit check, where gemini reads each lead's homepage and says if it really matches the seller's buyers.
-- **funding-only leads all get the same score,** so past the top few the list is basically alphabetical. the fit check would fix that too.
+- **the fit check is only as good as the description.** when a company's homepage won't load and the headline is vague, gemini has to guess, and it says "maybe". the "dropped" list is at the bottom of every report, so you can catch a wrong "no".
+- **leads with the same score are in alphabetical order.** there are a lot of 8s.
+- **news leads have no founder names.** names come from sec filings, and a london startup doesn't have one.
 - **about a quarter of the funded companies had no website i could confirm.** the founders' names are still there, so you can search for them.
 - **the website guess can be wrong.** alcar inc. (darien, ct) first got matched to a swedish alcar.se. i fixed that one (redirects to foreign domains are rejected now), but guessed sites still need a look.
 - **hiring is only checked at companies it already found.** there's no list of every job board out there.
@@ -314,6 +333,7 @@ python -m pytest tests/ -v
 - `tests/test_payload.py` checks the company domain makes it into the payload.
 - `tests/test_ashby.py` has 14 cases for ashby: the posting format, skipping unlisted jobs, picking the right fetcher, and the finder's domain check (including the circle.so case).
 - `tests/test_leads.py` has 34 cases for the lead finder: guessing websites (and rejecting parked or foreign ones), matching job titles to a seller's buyers, sec name matching, founder names, scoring, the seller profile, and the gemini client with the network mocked out.
+- `tests/test_news_fit.py` has 12 cases for the news search and the fit check: deduping headlines, merging what different outlets say about the same raise, competitors kept out of the likely buyers, one broken gemini batch not sinking the run, and a clear fit outranking a company with more signals.
 - `tests/test_funding.py` has 27 cases for the funding signal: reading form d, every branch of the rule, the $5m line, the 180-day window, no duplicates, same-day filings and the payload.
 
 `scripts/send_test_signals.py` also runs 7 end-to-end tests against the real n8n workflow and hubspot:
@@ -360,13 +380,13 @@ config/    match_rule.json (hire rule), funding_rule.json (funding rule),
            boards.csv (job boards, greenhouse or ashby), boards_gtm.csv (12-board demo list),
            sec_issuers.csv (company -> sec cik),
            sellers/ (one profile per seller for the lead finder, plus _template.json)
-src/       fetch.py  match.py  sec.py  funding.py  deliver.py  seller.py  leads.py  llm.py
+src/       fetch.py  match.py  sec.py  funding.py  deliver.py  seller.py  leads.py  news.py  fit.py  llm.py
 scripts/   run_detector.py  run_funding_detector.py  find_leads.py  find_sec_ciks.py  webhook_server.py
            show_signals.py  run_sql.py  build_ci_db.py  send_test_signals.py  check_invalid_signal.py
 n8n/       workflow.json (the hubspot hand-off, secrets swapped for placeholders)
 sql/       schema and migrations
 schemas/   signal.schema.json
-tests/     test_match.py  test_ashby.py  test_funding.py  test_leads.py  test_webhook.py  test_payload.py
+tests/     test_match.py  test_ashby.py  test_funding.py  test_leads.py  test_news_fit.py  test_webhook.py  test_payload.py
 docs/      signal_rules.md (how repeats are handled), routing_spec.md (the crm routing)
 .github/   workflows/detect.yml (the scheduled run)
 ```

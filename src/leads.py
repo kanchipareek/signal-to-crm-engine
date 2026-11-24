@@ -52,10 +52,12 @@ def guess_domains(entity):
     if len(core) > 1:
         bases.append("-".join(core))
     out = []
+    if len(core) > 1 and core[-1] in TLDS:
+        out.append(f"{''.join(core[:-1])}.{core[-1]}")  # "Perry AI" -> perry.ai
     for base in dict.fromkeys(bases):
         for tld in TLDS:
             out.append(f"{base}.{tld}")
-    return out
+    return list(dict.fromkeys(out))
 
 
 def fetch_home(domain):
@@ -163,6 +165,9 @@ def sec_by_name(name):
 
 # --- scoring and wording -------------------------------------------------------
 
+FIT_POINTS = {"yes": 5, "maybe": 0}  # a clear fit with one signal beats an unclear fit with two
+
+
 def score(lead):
     s = 0
     if lead.get("funding"):
@@ -171,15 +176,23 @@ def score(lead):
     s += min(4, sum(2 if h["senior"] else 1 for h in hires))
     if lead.get("funding") and hires:
         s += 2
+    s += FIT_POINTS.get(lead.get("fit"), 0)
     return s
 
 
 def why(lead, profile, money):
     """Plain-words reasons this company is a lead for the seller."""
     reasons = []
+    if lead.get("fit_reason"):
+        reasons.append(f"Fit ({lead['fit']}): {lead['fit_reason']}")
     f = lead.get("funding")
     if f:
-        reasons.append(f"Raised {money(f['amount'])} (SEC Form D, filed {f['date']}). {profile['funding_reason']}")
+        amount = money(f["amount"]) if f.get("amount") else "money (amount not stated)"
+        if f.get("source") == "news":
+            where = f"in the news, {f['date']}: \"{f['headline']}\""
+        else:
+            where = f"SEC Form D, filed {f['date']}"
+        reasons.append(f"Raised {amount} ({where}). {profile['funding_reason']}")
     hires = lead.get("hires", [])
     if hires:
         titles = ", ".join(f"\"{h['title']}\"" for h in hires[:3])

@@ -1,4 +1,4 @@
-"""Runs the detector: fetch each board, classify every posting, store the result.
+"""Runs the detector: fetch each board (greenhouse or ashby), classify every posting, store the result.
 
 Hits go to `signals`; near-misses and reviews go to `signal_candidates`.
 Re-running is safe - the unique keys stop duplicates, so nothing is written twice.
@@ -19,7 +19,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.fetch import fetch_board, FetchError
+from src.fetch import fetch_postings, FetchError
 from src.match import classify, load_rule
 
 SIGNAL_TYPE = "gtm_leadership_hire"
@@ -66,9 +66,10 @@ def main():
 
     for row in boards:
         token = row["board_token"].strip()
+        source = (row.get("source") or "greenhouse").strip()
         company_id = int(row["company_id"])
         try:
-            postings = fetch_board(token)
+            postings = fetch_postings(source, token)
         except FetchError as exc:
             print(f"  ! {row['name']}: {exc}")
             continue
@@ -85,7 +86,7 @@ def main():
                         source_url, title, department, first_published, first_seen_at,
                         delivery_status, repost_of)
                        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
-                    (company_id, SIGNAL_TYPE, "greenhouse", token, p["external_id"],
+                    (company_id, SIGNAL_TYPE, source, token, p["external_id"],
                      p["source_url"], p["title"], p["department"], p["first_published"],
                      now, status, repost_of))
                 if cur.rowcount:
@@ -102,7 +103,7 @@ def main():
                        (company_id, source, board_token, external_id, source_url,
                         title, department, label, first_seen_at)
                        VALUES (?,?,?,?,?,?,?,?,?)""",
-                    (company_id, "greenhouse", token, p["external_id"],
+                    (company_id, source, token, p["external_id"],
                      p["source_url"], p["title"], p["department"], label, now))
                 if cur.rowcount:
                     new_cands += 1
@@ -112,7 +113,7 @@ def main():
                 skipped += 1
 
         conn.commit()
-        print(f"  ok {row['name']:22} {len(postings):3} postings, {board_hits} new hits")
+        print(f"  ok {row['name']:22} {source:10} {len(postings):3} postings, {board_hits} new hits")
         time.sleep(0.5)
 
     conn.close()

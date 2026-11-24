@@ -49,7 +49,8 @@
   "ambiguous_context_words": [
     "engineering", "operations", "ops", "product",
     "design", "data", "platform", "program", "project",
-    "architect", "architecture"
+    "architect", "architecture",
+    "chief of staff"
   ],
 
   "labels": ["hit", "near_miss", "review", "not_a_hit"]

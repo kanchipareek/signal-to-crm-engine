@@ -1,12 +1,17 @@
-"""Fills in the Greenhouse board token for each company in config/boards.csv.
+"""Fills in the job board (greenhouse or ashby) for each company in config/boards.csv.
 
-Two tries per company:
+Three tries per company:
   1. guess the token from the name/domain and check it against Greenhouse's API
   2. fetch the homepage and /careers and look for a boards.greenhouse.io link
+  3. guess the token on Ashby
 
-Every token - guessed OR scraped - has to pass the same check against the
-company name, so a wrong board can't sneak in. Anything unresolved stays blank;
-those are the gaps for the Lever pass.
+Every greenhouse token - guessed OR scraped - has to pass the same check against
+the company name, so a wrong board can't sneak in. Ashby's job list has no
+company name, so an ashby board has to pass a stricter check: the website Ashby
+has on file for that board must be the company's domain (that's how "circle"
+got rejected - it belongs to circle.so, not circle.com), and it has to have at
+least one open job (an empty board is usually an old one they've moved off).
+Anything unresolved stays blank.
 """
 import csv
 import json
@@ -69,6 +74,56 @@ def scrape_token(domain):
     return None
 
 
+ASHBY_JOBS = "https://api.ashbyhq.com/posting-api/job-board/{token}"
+# Ashby's job page uses this to look up the org behind a board. It's not a
+# documented api, so it's only used here, in the one-off board finder, never in
+# the detector. If it ever breaks, ashby boards just won't be auto-filled.
+ASHBY_ORG = "https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiOrganizationFromHostedJobsPageName"
+ASHBY_ORG_QUERY = (
+    "query ApiOrganizationFromHostedJobsPageName($organizationHostedJobsPageName: String!, "
+    "$searchContext: OrganizationSearchContext) { organization: organizationFromHostedJobsPageName("
+    "organizationHostedJobsPageName: $organizationHostedJobsPageName, searchContext: $searchContext) "
+    "{ name publicWebsite } }"
+)
+
+
+def bare_domain(url):
+    """'https://www.Airwallex.com/' -> 'airwallex.com'."""
+    url = (url or "").lower().strip()
+    url = re.sub(r"^https?://", "", url)
+    url = re.sub(r"^www\.", "", url)
+    return url.split("/")[0]
+
+
+def ashby_site(token):
+    body = json.dumps({
+        "operationName": "ApiOrganizationFromHostedJobsPageName",
+        "variables": {"organizationHostedJobsPageName": token, "searchContext": "JobBoard"},
+        "query": ASHBY_ORG_QUERY,
+    }).encode()
+    req = urllib.request.Request(ASHBY_ORG, data=body, headers={
+        "User-Agent": UA, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
+            org = (json.loads(resp.read()).get("data") or {}).get("organization") or {}
+    except Exception:
+        return None
+    return org.get("publicWebsite")
+
+
+def ashby_token_ok(token, domain):
+    status, data = fetch(ASHBY_JOBS.format(token=token))
+    if status != 200:
+        return False
+    try:
+        jobs = json.loads(data.decode("utf-8")).get("jobs", [])
+    except Exception:
+        return False
+    if not jobs:
+        return False
+    return bare_domain(ashby_site(token)) == bare_domain(domain)
+
+
 def main():
     path = Path("config/boards.csv")
     rows = list(csv.DictReader(path.open(encoding="utf-8")))
@@ -81,14 +136,21 @@ def main():
             if token_ok(cand, row["name"], row["domain"]):
                 token = cand
                 break
+        source = "greenhouse"
         if not token:
             scraped = scrape_token(row["domain"])
             if scraped and token_ok(scraped, row["name"], row["domain"]):
                 token = scraped
+        if not token:
+            for cand in guess_tokens(row["name"], row["domain"]):
+                if ashby_token_ok(cand, row["domain"]):
+                    token, source = cand, "ashby"
+                    break
         if token:
             row["board_token"] = token
+            row["source"] = source
             filled += 1
-            print(f"  ok    {row['name']:24} -> {token}")
+            print(f"  ok    {row['name']:24} -> {source}:{token}")
         else:
             print(f"  gap   {row['name']}")
         time.sleep(0.5)

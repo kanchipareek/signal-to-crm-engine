@@ -2,13 +2,14 @@
 
 i built this to catch two things that usually mean a company is about to spend on go-to-market: a senior gtm hire (vp of marketing, head of growth, cro, that kind of role) and a fresh funding round. when it spots one, it creates a task in hubspot with an owner and a due date, so someone actually follows up.
 
-hires come from public greenhouse job boards. funding comes from sec form d filings.
+hires come from public job boards on greenhouse and ashby. funding comes from sec form d filings.
 
 > the list of accounts comes from my other project, [lead-enrichment-engine](https://github.com/kanchipareek/lead-enrichment-engine).
 
 some numbers from my runs:
 
 - in october 2026 i ran it over 18 boards (about 2,242 live postings). it stored 8 signals and held back 447 postings it wasn't sure about, so i could look at them myself. running it a second time added nothing (`0 new signals, 8 unchanged`), which is what i wanted. the numbers move around as boards change.
+- in november 2026 i added ashby, which brought me from 18 boards to 33. the full run went through about 4,200 postings and found 26 signals (15 of them from ashby boards), plus 4 reposts it saved but didn't alert on. running it again gave `0 new, 30 unchanged`.
 - for the hubspot demo i used a smaller list of 12 boards. that found 6 signals, held back 61, and all 6 went into hubspot (`delivered 6 | failed 0`). they ended up on 5 companies because two were at salesloft.
 
 ## quick start
@@ -19,7 +20,7 @@ cd signal-to-crm-engine
 python -m venv .venv
 source .venv/bin/activate          # windows (git bash): source .venv/Scripts/activate
 pip install -r requirements.txt
-python -m pytest tests/ -q         # 72 passed
+python -m pytest tests/ -q         # 89 passed
 ```
 
 ### trying it without project 1
@@ -28,7 +29,7 @@ normally this runs against project 1's database. if you just want to see it work
 
 ```
 python scripts/build_ci_db.py                               # companies + project 2 tables
-LEAD_DB_PATH=ci.db python scripts/run_detector.py           # job boards
+LEAD_DB_PATH=ci.db python scripts/run_detector.py           # job boards (greenhouse + ashby)
 LEAD_DB_PATH=ci.db python scripts/run_detector.py           # run it again: 0 new
 LEAD_DB_PATH=ci.db python scripts/run_funding_detector.py   # sec form d filings
 LEAD_DB_PATH=ci.db python scripts/show_signals.py
@@ -50,8 +51,8 @@ for the 12-board list from the hubspot demo, set `BOARDS_CSV=config/boards_gtm.c
 ## how the hire signal works
 
 ```
-greenhouse board api
-        │  fetch.py  (retries)
+greenhouse or ashby board api   (config/boards.csv says which)
+        │  fetch.py  (retries, same posting shape from both)
         ▼
    match.py  ◄── config/match_rule.json
         │
@@ -70,6 +71,18 @@ run_detector.py  ◄── github actions, every 6h
 ```
 
 so it fetches postings, classifies them with the rule, saves the hits, and sends each one as a signed post. i can test each of those steps on its own.
+
+### greenhouse and ashby
+
+each row in `config/boards.csv` has a `source` (`greenhouse` or `ashby`) and a `board_token`. `fetch.py` turns both into the same posting format, so the rule and everything after it doesn't care where a job came from. on ashby i join the department and team into one string ("Go To Market Marketing"), since that's what the rule checks for clashes. i also skip jobs ashby marks as unlisted.
+
+`scripts/find_boards.py` fills in missing boards. it tries greenhouse first, then ashby. ashby's job list doesn't include the company name, so i check ashby boards a stricter way: the website ashby has for that board has to be the account's domain, and the board needs at least one open job. that check caught a few:
+
+- "circle" on ashby is circle.so, not my circle.com, so it got skipped.
+- everbridge's board has no website listed, so i couldn't confirm it.
+- deel, loom, stytch and wiz have empty ashby boards. they've probably moved to something else.
+
+to get the website i use a lookup that ashby's own job pages use. it isn't a documented api, so i only use it in the finder. the detector itself only calls ashby's public posting api.
 
 ## how the money-raised signal works
 
@@ -114,7 +127,7 @@ a wrong match means a fake funding signal. so `config/sec_issuers.csv` has one c
 python scripts/find_sec_ciks.py Vanta Ramp
 ```
 
-for now i've added 8 companies where the legal name and hq city clearly match: vanta, deel, clari, drata, hebbia, zapier, notion and figma. 7 of them don't have a greenhouse board, so this signal covers accounts the hire one misses.
+for now i've added 8 companies where the legal name and hq city clearly match: vanta, deel, clari, drata, hebbia, zapier, notion and figma. deel, clari and hebbia don't have a job board i can read, so for those this is the only signal i get.
 
 ### did it work on real filings?
 
@@ -239,9 +252,10 @@ new databases already have the column.
 python -m pytest tests/ -v
 ```
 
-- `tests/test_match.py` has 30 cases for the hire rule: hits, near misses, review, department clashes and text cleanup.
+- `tests/test_match.py` has 33 cases for the hire rule: hits, near misses, review, department clashes, text cleanup, and making sure "chief of staff, sales" goes to review instead of looking like a sales leader.
 - `tests/test_webhook.py` has 14 cases for when things go wrong: replays, bad signatures, broken bodies, running out of retries, dead-lettering and re-running the detector.
 - `tests/test_payload.py` checks the company domain makes it into the payload.
+- `tests/test_ashby.py` has 14 cases for ashby: the posting format, skipping unlisted jobs, picking the right fetcher, and the finder's domain check (including the circle.so case).
 - `tests/test_funding.py` has 27 cases for the funding signal: reading form d, every branch of the rule, the $5m line, the 180-day window, no duplicates, same-day filings and the payload.
 
 `scripts/send_test_signals.py` also runs 7 end-to-end tests against the real n8n workflow and hubspot:
@@ -276,7 +290,8 @@ tests 1 to 6 passed on a free hubspot sandbox on 15 nov 2026. i haven't run test
 - a form d doesn't always mean a new round. tender offers and secondary sales get one too (figma's $416m filing in 2024 looks like that). the form doesn't say which, so i treat the amount as something to check.
 - i skip amendments, so the amount is from the first filing. vanta's 2022 round went from $103m to $150m in its amendment, but the signal says $103m.
 - only 8 companies have a cik so far. i still need to go through the rest with `find_sec_ciks.py`.
-- only greenhouse works for job boards. i haven't built lever. 18 of my 59 accounts have a public greenhouse board, so that limits how many i can watch.
+- only greenhouse and ashby work for job boards. i haven't built lever yet. 33 of my 59 accounts have a board i can read (18 greenhouse, 15 ashby), so the other 26 only get the funding signal if they have a cik, and otherwise nothing.
+- the ashby finder relies on an undocumented ashby lookup for the company website. if ashby changes it, the finder stops filling ashby boards. the detector keeps working because it doesn't use that lookup.
 - a re-listed job only counts as a repost if the company and title match exactly within 90 days. if they change the title, it looks new.
 - logs are plain text, not json.
 
@@ -284,7 +299,7 @@ tests 1 to 6 passed on a free hubspot sandbox on 15 nov 2026. i haven't run test
 
 ```
 config/    match_rule.json (hire rule), funding_rule.json (funding rule),
-           boards.csv (job boards), boards_gtm.csv (12-board demo list),
+           boards.csv (job boards, greenhouse or ashby), boards_gtm.csv (12-board demo list),
            sec_issuers.csv (company -> sec cik)
 src/       fetch.py  match.py  sec.py  funding.py  deliver.py
 scripts/   run_detector.py  run_funding_detector.py  find_sec_ciks.py  webhook_server.py
@@ -292,7 +307,7 @@ scripts/   run_detector.py  run_funding_detector.py  find_sec_ciks.py  webhook_s
 n8n/       workflow.json (the hubspot hand-off, secrets swapped for placeholders)
 sql/       schema and migrations
 schemas/   signal.schema.json
-tests/     test_match.py  test_funding.py  test_webhook.py  test_payload.py
+tests/     test_match.py  test_ashby.py  test_funding.py  test_webhook.py  test_payload.py
 docs/      signal_rules.md (how repeats are handled), routing_spec.md (the crm routing)
 .github/   workflows/detect.yml (the scheduled run)
 ```

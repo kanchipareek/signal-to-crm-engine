@@ -36,6 +36,9 @@ CASES = [
     ("Head of Marketing Operations", "Marketing", "review"),
     ("Director of Marketing Operations", "Marketing", "review"),
     ("VP Marketing", "Engineering", "review"),               # conflict, not missing
+    ("Chief of Staff, Sales", "Sales", "review"),            # "chief" here isn't a sales leader
+    ("Chief of Staff to the CRO", None, "review"),
+    ("Chief Revenue Officer", None, "hit"),                  # real chief titles still fire
 
     # --- clearly not a signal ------------------------------------------------
     ("VP of Engineering", "Engineering", "not_a_hit"),

@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS signals (
     department       TEXT,
     matched_term     TEXT,
     seniority        TEXT,
+    amount_usd       INTEGER,            -- money_raised signals only
     first_published  TEXT,
     first_seen_at    TEXT    NOT NULL,
     repost_of        INTEGER REFERENCES signals(id),

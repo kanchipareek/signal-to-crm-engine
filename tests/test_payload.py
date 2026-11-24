@@ -5,8 +5,9 @@ from src.deliver import build_event
 def test_event_includes_company_domain():
     row = (1, 1001, "UserGems", "usergems.com", "greenhouse", "usergems",
            "6123486004", "https://job-boards.greenhouse.io/usergems/jobs/6123486004",
-           "VP of Sales", None, "2026-07-28T14:57:37-04:00")
+           "VP of Sales", None, "2026-07-28T14:57:37-04:00", "gtm_leadership_hire", None)
     event = build_event(row)
     assert event["company_domain"] == "usergems.com"
     assert event["company_name"] == "UserGems"
     assert event["title"] == "VP of Sales"
+    assert event["event"] == "gtm_leadership_hire"

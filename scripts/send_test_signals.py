@@ -1,4 +1,4 @@
-"""Sends six test signals to the n8n webhook and checks what comes back.
+"""Sends seven test signals to the n8n webhook and checks what comes back.
 
 These are TEST records with fake .example domains, not real companies.
 They prove the routing rule before any real signal touches the CRM:
@@ -9,6 +9,7 @@ They prove the routing rule before any real signal touches the CRM:
   4. the same signal as #1 again       -> duplicate, no second task
   5. tampered signature                -> 401
   6. missing company_domain            -> 400
+  7. money raised (SEC Form D)         -> funding_round, MEDIUM task
 
 Run:  python scripts/send_test_signals.py
 Needs WEBHOOK_URL and WEBHOOK_SECRET in .env (WEBHOOK_URL = the n8n URL).
@@ -29,9 +30,10 @@ from src.deliver import load_env, sign  # same signing code the real sender uses
 RUN = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")  # new ids every run, so you can re-run safely
 
 
-def event(n, company, domain, title):
+def event(n, company, domain, title, kind="gtm_leadership_hire", amount=None):
     return {
-        "event": "gtm_leadership_hire",
+        "event": kind,
+        "amount_usd": amount,
         "signal_id": 9000 + n,
         "company_id": 9000 + n,
         "company_name": company,
@@ -78,6 +80,8 @@ def main():
     t2 = event(2, "TEST Existing Co", "test-existing-co.example", "Head of Growth")
     t3 = event(3, "TEST Regional Co", "test-regional.example", "Head of Sales, ANZ")
     t6 = event(6, "TEST No Domain Co", "", "CMO")
+    t7 = event(7, "TEST Funded Co", "test-funded.example", "Raised $25M (SEC Form D)",
+               kind="money_raised", amount=25_000_000)
 
     cases = [
         ("1 revenue leader, new company", t1, False, lambda s, r: s == 200 and r.get("status") in ("created", "updated") and r.get("signal_type") == "revenue_leader"),
@@ -86,6 +90,7 @@ def main():
         ("4 replay of #1 -> duplicate", t1, False, lambda s, r: s == 200 and r.get("status") == "duplicate"),
         ("5 tampered signature -> 401", t1, True, lambda s, r: s == 401),
         ("6 missing domain -> 400", t6, False, lambda s, r: s == 400),
+        ("7 money raised -> funding_round", t7, False, lambda s, r: s == 200 and r.get("signal_type") == "funding_round"),
     ]
     # HubSpot's search index takes a few seconds to see a new company.
     # Without a pause, the replay test could create a second copy.

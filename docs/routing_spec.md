@@ -8,7 +8,10 @@ my detector posts a json signal to an n8n webhook. it's signed with hmac sha256 
 |---|---|---|---|
 | revenue_leader | revenue, sales, gtm, commercial leadership | high | 2 days |
 | marketing_leader | marketing, growth, demand, brand leadership | medium | 3 days |
+| funding_round | a $5m+ round on an sec form d (event `money_raised`) | medium | 3 days |
 | review | regional and country heads, anything else | low | 5 days |
+
+a `money_raised` event is always `funding_round`. the detector's funding rule already decided it's a real raise, so the workflow doesn't look at the title. every other event is typed from the job title. a funding round goes to the ae owner, same as revenue and marketing.
 
 ## what happens to the company
 1. i look the company up in hubspot by domain. if it's not there, i create it.
@@ -17,7 +20,7 @@ my detector posts a json signal to an n8n webhook. it's signed with hmac sha256 
 4. i create a dated task linked to the company.
 
 ## evidence and expiry
-every company stores the job title, the posting url, the posting date, a unique key and an expiry date (30 days by default).
+every company stores the job title (or `Raised $25M (SEC Form D)` for a funding round), the posting or filing url, the posting or filing date, a unique key and an expiry date (30 days by default).
 
 ## duplicates
 if the same signal key shows up again, i return `duplicate` and create nothing.
@@ -25,15 +28,16 @@ if the same signal key shows up again, i return `duplicate` and create nothing.
 ## when things break
 if hubspot errors, n8n answers 500 so the detector retries a few times. permanent 4xx errors get dead-lettered.
 
-## my 6 tests (`scripts/send_test_signals.py`)
+## my 7 tests (`scripts/send_test_signals.py`)
 1. revenue leader at a new company: created
 2. marketing leader at an existing company: owner kept
 3. regional head: sent to review
 4. replay of test 1: duplicate
 5. tampered signature: 401
 6. missing domain: 400
+7. money raised: funding_round
 
-all 6 passed on 15 nov 2026 against a hubspot free sandbox.
+tests 1-6 passed on 15 nov 2026 against a hubspot free sandbox. test 7 hasn't been run against hubspot yet.
 
 ## what's not great yet
 - the company level `gtm_signal_type` only shows the latest signal. at salesloft a later review signal overwrote an earlier revenue one. the tasks still keep the full history.

@@ -1,0 +1,11 @@
+{
+  "signal_type": "money_raised",
+
+  "min_amount_usd": 5000000,
+
+  "lookback_days": 180,
+
+  "exclude_industry_groups": ["Pooled Investment Fund"],
+
+  "labels": ["hit", "near_miss", "review", "not_a_hit"]
+}

@@ -32,3 +32,4 @@ jobs:
         run: |
           python scripts/build_ci_db.py
           LEAD_DB_PATH=ci.db python scripts/run_detector.py
+          LEAD_DB_PATH=ci.db python scripts/run_funding_detector.py

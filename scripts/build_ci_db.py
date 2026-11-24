@@ -1,7 +1,7 @@
 """Builds a throwaway database for the CI smoke run.
 
 GitHub Actions has no access to Project 1's real database, so this makes a
-minimal stand-in: `companies` comes from config/boards.csv, and the Project 2
+minimal stand-in: `companies` comes from config/boards.csv and config/sec_issuers.csv, and the Project 2
 tables are created from the SQL files. The detector then runs against this
 exactly as it would against the real one - it just starts from empty signals.
 """
@@ -22,6 +22,14 @@ def main():
     with Path(os.environ.get("BOARDS_CSV", ROOT / "config" / "boards.csv")).open(encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
             if row["board_token"].strip():
+                conn.execute(
+                    "INSERT OR IGNORE INTO companies(id, name, domain) VALUES (?,?,?)",
+                    (int(row["company_id"]), row["name"], row["domain"]),
+                )
+    # companies checked by the money-raised detector, even without a job board
+    with Path(os.environ.get("SEC_ISSUERS_CSV", ROOT / "config" / "sec_issuers.csv")).open(encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            if row["cik"].strip():
                 conn.execute(
                     "INSERT OR IGNORE INTO companies(id, name, domain) VALUES (?,?,?)",
                     (int(row["company_id"]), row["name"], row["domain"]),

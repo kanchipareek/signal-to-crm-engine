@@ -30,6 +30,22 @@ signal already seen **within the last 90 days**.
 - Outside the 90-day window it is treated as first-seen again — a role that
   reopens after months is a genuinely new signal.
 
+## Money raised (SEC Form D)
+The funding detector (`scripts/run_funding_detector.py`) follows the same three
+rules, keyed on the filing instead of the posting:
+
+- **First-seen:** a Form D accession number not yet stored. If the funding
+  rule (`src/funding.py`, thresholds in `config/funding_rule.json`) calls it a
+  hit, insert as `pending`.
+- **Unchanged:** the same accession number again. `INSERT OR IGNORE`, no-op.
+- **Same-day duplicate:** a second hit for the same company **filed on the same
+  day** (companies often file one Form D per share class for one round). Insert
+  with `repost_of` set to the first and `delivery_status = 'skipped'`.
+
+Amendments (D/A) are never signals. The original filing carried the news, and
+an amendment only revises it. Filings older than `lookback_days` (180) are
+ignored, so the first run doesn't flood the CRM with years-old rounds.
+
 ## Why a time window
 Without one, a company re-hiring the same title years later would be silently
 swallowed as a "re-post". The 90-day window keeps recent duplicates quiet while

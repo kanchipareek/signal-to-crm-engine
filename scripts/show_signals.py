@@ -21,14 +21,14 @@ def main():
     load_env()
     conn = sqlite3.connect(os.environ["LEAD_DB_PATH"])
     rows = conn.execute("""
-        SELECT c.name, s.title, s.department, s.source_url
+        SELECT c.name, s.title, s.department, s.source_url, s.signal_type
         FROM signals s JOIN companies c ON c.id = s.company_id
-        ORDER BY c.name, s.title
+        ORDER BY s.signal_type, c.name, s.title
     """).fetchall()
     print(f"{len(rows)} signals\n")
-    for name, title, dept, url in rows:
+    for name, title, dept, url, signal_type in rows:
         print(f"{name:12} | {title}")
-        print(f"{'':12} | dept={dept}")
+        print(f"{'':12} | {signal_type}" + (f", dept={dept}" if signal_type != "money_raised" else ""))
         print(f"{'':12} | {url}")
         print()
     cands = conn.execute("SELECT count(*) FROM signal_candidates").fetchone()[0]

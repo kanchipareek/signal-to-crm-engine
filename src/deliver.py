@@ -23,7 +23,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 TIMEOUT = 10
-EVENT = "gtm_leadership_hire"
 TRANSIENT_CODES = {429, 500, 502, 503, 504}
 
 
@@ -51,9 +50,11 @@ def is_transient(status_code, error):
 def build_event(row):
     """Turn a signals row into the webhook payload."""
     (signal_id, company_id, company_name, company_domain, source, board_token,
-     external_id, source_url, title, department, first_published) = row
+     external_id, source_url, title, department, first_published,
+     signal_type, amount_usd) = row
     return {
-        "event": EVENT,
+        "event": signal_type,  # 'gtm_leadership_hire' or 'money_raised'
+        "amount_usd": amount_usd,
         "signal_id": signal_id,
         "company_id": company_id,
         "company_name": company_name,
@@ -96,7 +97,8 @@ def post(url, secret, body, idempotency_key):
 def deliver_pending(conn, url, secret, max_attempts=3, backoff=1.0, pause=0.0):
     rows = conn.execute("""
         SELECT s.id, s.company_id, c.name, c.domain, s.source, s.board_token, s.external_id,
-               s.source_url, s.title, s.department, s.first_published
+               s.source_url, s.title, s.department, s.first_published,
+               s.signal_type, s.amount_usd
         FROM signals s JOIN companies c ON c.id = s.company_id
         WHERE s.delivery_status IN ('pending', 'failed')
         ORDER BY s.id

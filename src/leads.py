@@ -113,19 +113,38 @@ def find_domain(entity):
 # --- job boards ----------------------------------------------------------------
 
 def find_board(name, domain):
-    """(source, token) for the company's greenhouse or ashby board, or None.
+    """(source, token) for the company's job board, or None.
 
-    Uses the same checks as scripts/find_boards.py: greenhouse boards have to
-    name the company, ashby boards have to list the company's domain.
+    Uses the same checks as scripts/find_boards.py, in this order:
+      1. a board the company's own site links to (that link is the proof)
+      2. greenhouse - the board has to name the company
+      3. ashby      - ashby has to list the company's domain
+      4. lever      - the hosted board has to link back to the domain
+      5. workable   - the account's website has to be the domain
+      6. their own careers page (/careers, /jobs) if it lists any roles
     """
-    from scripts.find_boards import ashby_token_ok, guess_tokens, token_ok
+    from scripts.find_boards import (ashby_token_ok, boards_linked_from_site, guess_tokens,
+                                     lever_token_ok, token_ok, workable_token_ok)
+    from src.fetch import FetchError, fetch_careers_page, fetch_postings
+    for source, token in boards_linked_from_site(domain):
+        try:
+            if fetch_postings(source, token):
+                return source, token
+        except (FetchError, ValueError):
+            continue
     tokens = guess_tokens(name, domain)
-    for token in tokens:
-        if token_ok(token, name, domain):
-            return "greenhouse", token
-    for token in tokens:
-        if ashby_token_ok(token, domain):
-            return "ashby", token
+    for check, source in ((lambda t: token_ok(t, name, domain), "greenhouse"),
+                          (lambda t: ashby_token_ok(t, domain), "ashby"),
+                          (lambda t: lever_token_ok(t, domain), "lever"),
+                          (lambda t: workable_token_ok(t, domain), "workable")):
+        for token in tokens:
+            if check(token):
+                return source, token
+    try:
+        if fetch_careers_page(domain):
+            return "careers", domain
+    except FetchError:
+        pass
     return None
 
 

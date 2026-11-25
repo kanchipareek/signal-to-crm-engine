@@ -17,9 +17,13 @@ import csv
 import json
 import re
 import time
+import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 UA = "gtm-signal-detector/0.1 (learning project; contact: kanchipareek32@gmail.com)"
 TIMEOUT = 10
@@ -122,6 +126,68 @@ def ashby_token_ok(token, domain):
     if not jobs:
         return False
     return bare_domain(ashby_site(token)) == bare_domain(domain)
+
+
+# --- lever, workable, and boards the company's own site links to -------------------
+# Same rule as above: a board only counts if it provably belongs to the domain.
+#   lever    - the hosted board page links back to the company's website
+#   workable - the account's website field is the company's domain
+#   any ats  - the company's own homepage or careers page links to the board
+
+def lever_token_ok(token, domain):
+    from src.fetch import _web
+    status, _, text = _web(f"https://api.lever.co/v0/postings/{token}?mode=json&limit=1")
+    if status != 200 or text.strip() in ("", "[]"):
+        return False
+    status, _, page = _web(f"https://jobs.lever.co/{token}")
+    if status != 200:
+        return False
+    sites = {bare_domain(u) for u in re.findall(r'href="(https?://[^"]+)"', page)}
+    return bare_domain(domain) in sites
+
+
+def workable_token_ok(token, domain):
+    from src.fetch import _web
+    status, _, text = _web(f"https://apply.workable.com/api/v1/accounts/{token}")
+    if status != 200:
+        return False
+    try:
+        site = json.loads(text).get("url")
+    except Exception:
+        return False
+    if bare_domain(site) != bare_domain(domain):
+        return False
+    from src.fetch import fetch_workable_board
+    try:
+        return bool(fetch_workable_board(token))
+    except Exception:
+        return False
+
+
+ATS_LINKS = [
+    ("ashby", re.compile(r"jobs\.ashbyhq\.com/([A-Za-z0-9_.%-]+)")),
+    ("lever", re.compile(r"jobs\.lever\.co/([A-Za-z0-9_.-]+)")),
+    ("workable", re.compile(r"apply\.workable\.com/([A-Za-z0-9_.-]+)")),
+    ("greenhouse", GH_LINK),
+]
+NOT_TOKENS = {"api", "embed", "j", "jobs", "careers", "static", "assets"}
+
+
+def boards_linked_from_site(domain):
+    """[(source, token)] for job boards the company's own site links to. A link
+    from their own homepage or careers page is proof the board is theirs."""
+    from src.fetch import _web
+    found = []
+    for path in ("", "/careers", "/jobs"):
+        status, _, page = _web(f"https://{domain}{path}")
+        if status != 200:
+            continue
+        for source, rx in ATS_LINKS:
+            for token in rx.findall(page):
+                token = urllib.parse.unquote(token).strip("/").lower()
+                if token and token not in NOT_TOKENS and (source, token) not in found:
+                    found.append((source, token))
+    return found
 
 
 def main():

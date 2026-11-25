@@ -216,6 +216,50 @@ def add_people(lead):
     return lead
 
 
+def process(cands, profile, days, workers=6, fit_check=True):
+    """Steps 3 and 4 for a list of candidate companies: signals, fit check,
+    people, the evidence recheck, scoring. Returns (leads, rejected, everything)."""
+    rule = funding_rule(profile, days)
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        done = list(pool.map(lambda c: enrich(c, profile, rule), cands))
+
+    with_signal = [c for c in done if not c.get("dropped") and (c.get("funding") or c.get("hires"))]
+    rejected = []
+    if with_signal and fit_check:
+        log(f"  fit check on {len(with_signal)} companies with a signal")
+        try:
+            failed = check_fit(with_signal, profile)
+            how = "rule-based" if all(c.get("fit_by") == "rule-based" for c in with_signal) else "gemini"
+            if failed:
+                log(f"  ! {failed} gemini batches failed twice, those companies got the keyword check")
+            rejected = [c for c in with_signal if c["fit"] == "no"]
+            with_signal = [c for c in with_signal if c["fit"] != "no"]
+            log(f"  {len(rejected)} dropped as not a fit, {sum(c['fit'] == 'yes' for c in with_signal)} clear fits ({how})")
+        except LLMError as exc:
+            log(f"  ! fit check skipped: {exc}")
+    log(f"  looking up founders / ceo for {sum(1 for c in with_signal if not c.get('people'))} leads without an sec filing")
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        with_signal = list(pool.map(add_people, with_signal))
+
+    # every job gets fetched again now: still 200, still listing the role, or it's not evidence
+    cache = PageCache()
+    jobs_before = sum(len(c.get("hires", [])) for c in with_signal)
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        ok = list(pool.map(lambda c: verify_lead(c, cache), with_signal))
+    no_evidence = [c for c, keep in zip(with_signal, ok) if not keep]
+    with_signal = [c for c, keep in zip(with_signal, ok) if keep]
+    jobs_dropped = sum(len(c.get("dropped_jobs", [])) for c in with_signal + no_evidence)
+    log(f"  rechecked {jobs_before} job urls: {jobs_dropped} gone or no longer listing the role, "
+        f"{len(no_evidence)} leads dropped for having no evidence left")
+    leads = []
+    for c in with_signal:
+        c["score"] = score(c)
+        c["why"] = why(c, profile, format_usd)
+        leads.append(c)
+    leads.sort(key=lambda l: (-l["score"], l["name"]))
+    return leads, rejected, done
+
+
 # --- step 4: report ------------------------------------------------------------------
 
 def people_text(people):
@@ -327,43 +371,8 @@ def main():
     log(f"  {len(cands)} companies to check")
 
     log("3. checking signals (websites, job boards, sec)")
-    rule = funding_rule(profile, args.days)
-    with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        done = list(pool.map(lambda c: enrich(c, profile, rule), cands))
-
-    with_signal = [c for c in done if not c.get("dropped") and (c.get("funding") or c.get("hires"))]
-    rejected = []
-    if with_signal and not args.no_fit_check:
-        log(f"  fit check on {len(with_signal)} companies with a signal")
-        try:
-            failed = check_fit(with_signal, profile)
-            if failed:
-                log(f"  ! {failed} fit-check batches failed twice, those companies stay as 'maybe'")
-            rejected = [c for c in with_signal if c["fit"] == "no"]
-            with_signal = [c for c in with_signal if c["fit"] != "no"]
-            log(f"  {len(rejected)} dropped as not a fit, {sum(c['fit'] == 'yes' for c in with_signal)} clear fits")
-        except LLMError as exc:
-            log(f"  ! fit check skipped: {exc}")
-    log(f"  looking up founders / ceo for {sum(1 for c in with_signal if not c.get('people'))} leads without an sec filing")
-    with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        with_signal = list(pool.map(add_people, with_signal))
-
-    # every job gets fetched again now: still 200, still listing the role, or it's not evidence
-    cache = PageCache()
-    jobs_before = sum(len(c.get("hires", [])) for c in with_signal)
-    with ThreadPoolExecutor(max_workers=args.workers) as pool:
-        ok = list(pool.map(lambda c: verify_lead(c, cache), with_signal))
-    no_evidence = [c for c, keep in zip(with_signal, ok) if not keep]
-    with_signal = [c for c, keep in zip(with_signal, ok) if keep]
-    jobs_dropped = sum(len(c.get("dropped_jobs", [])) for c in with_signal + no_evidence)
-    log(f"  rechecked {jobs_before} job urls: {jobs_dropped} gone or no longer listing the role, "
-        f"{len(no_evidence)} leads dropped for having no evidence left")
-    leads = []
-    for c in with_signal:
-        c["score"] = score(c)
-        c["why"] = why(c, profile, format_usd)
-        leads.append(c)
-    leads.sort(key=lambda l: (-l["score"], l["name"]))
+    leads, rejected, done = process(cands, profile, args.days, workers=args.workers,
+                                    fit_check=not args.no_fit_check)
     errors = [c for c in done if c.get("error")]
     dropped = [c for c in done if c.get("dropped")]
 

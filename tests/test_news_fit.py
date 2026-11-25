@@ -75,7 +75,7 @@ def test_headlines_are_deduped_and_dated(monkeypatch):
         "now": staticmethod(lambda tz=None: real.datetime(2026, 11, 24, tzinfo=tz))}))
     got = news.search_headlines(PROFILE, 14)
     titles = [h["title"] for h in got]
-    assert titles.count("Perry AI raises $2.2M seed to give private capital a legal memory - Dealroom") == 1
+    assert titles.count("Perry AI raises $2.2M seed to give private capital a legal memory") == 1   # " - Dealroom" dropped
     assert got[0]["date"] == "2026-11-18"
 
 

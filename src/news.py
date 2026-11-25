@@ -152,13 +152,15 @@ def search_headlines(profile, days):
     seen, out = set(), []
     for q, items in batches:
         for item in items:
-            title = re.sub(r"\s+-\s+[^-]{2,60}$", "", item["title"])  # drop " - Dealroom" style source suffix
-            key = re.sub(r"[^a-z0-9]", "", title.lower())[:80]
+            title = item["title"]
+            if "google" in item["source"]:   # google appends " - Business Wire" style source names
+                title = re.sub(r"\s+-\s+[^-]{2,60}$", "", title)
+            key = re.sub(r"[^a-z0-9]", "", re.sub(r"\s+-\s+[^-]{2,60}$", "", title).lower())[:80]
             day = _iso(item["date"])
             if key in seen or (day and day < cutoff):
                 continue
             seen.add(key)
-            out.append({**item, "date": day, "query": q})
+            out.append({**item, "title": title, "date": day, "query": q})
     return out
 
 
@@ -208,7 +210,7 @@ def parse_round(text):
 VERBS = r"(?:raises|raised|secures|secured|bags|bagged|nets|netted|lands|closes|closed|gets|receives|" \
         r"grabs|snags|picks up|scores|announces|completes|attracts)"
 DESCRIPTOR = re.compile(r"(?:.*\b(?:startup|start-up|brand|platform|company|firm|maker|provider|unicorn|"
-                        r"-backed|backed|based|'s|’s)\s+)", re.I)
+                        r"-backed|backed|based|-bound|bound|'s|’s)\s+)", re.I)
 RAISE = re.compile(rf"^(?P<co>.+?)\s+{VERBS}\s+(?P<rest>.+)$", re.I)
 INVEST = re.compile(r"^(?P<inv>.+?)\s+(?:invests|makes (?:a )?(?:strategic |growth |minority |majority )?investment|"
                     r"announces (?:a )?(?:strategic |growth )?investment|backs|leads [\w$₹€£.\s-]+? round)\s+in\s+"

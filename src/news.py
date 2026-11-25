@@ -35,12 +35,16 @@ GOOGLE = "https://news.google.com/rss/search?q={q}&hl={hl}&gl={gl}&ceid={ceid}"
 EDITIONS = {"us": ("en-US", "US", "US:en"), "in": ("en-IN", "IN", "IN:en")}
 GENERAL_QUERIES = ["startup raises seed round", "startup raises series a", "raises pre-seed funding",
                    "strategic investment in startup"]
-# Indian funding feeds. Inc42's tag feed pages back with ?paged=N.
+# Indian funding feeds. Inc42's funding tag feed stopped updating in 2023, so I
+# read its main "buzz" feed (all news, ~1.5 days per page) and page back with
+# ?paged=N until the window is covered. Entrackr and YourStory only give their
+# latest items.
 FEEDS = {
-    "inc42": ["https://inc42.com/tag/funding/feed/"] + [f"https://inc42.com/tag/funding/feed/?paged={n}" for n in range(2, 7)],
-    "entrackr": ["https://entrackr.com/rss"],
-    "yourstory": ["https://yourstory.com/category/funding/feed"],
+    "inc42": "https://inc42.com/buzz/feed/?paged={page}",
+    "entrackr": "https://entrackr.com/rss",
+    "yourstory": "https://yourstory.com/category/funding/feed",
 }
+MAX_PAGES = 70
 BATCH = 60
 
 # very rough fx, fine for "is this raise in range"
@@ -109,10 +113,24 @@ def _rss(query, days, edition="us"):
     return parse_rss(_get(url), f"google news ({edition})")
 
 
-def _feed(name):
-    items = []
-    for url in FEEDS[name]:
-        items += parse_rss(_get(url), name)
+def _feed(name, cutoff=""):
+    """Items from one indian feed. Paged feeds are read back until they pass the cutoff date."""
+    url = FEEDS[name]
+    if "{page}" not in url:
+        return parse_rss(_get(url), name)
+    items, misses = [], 0
+    for page in range(1, MAX_PAGES + 1):
+        batch = parse_rss(_get(url.format(page=page)), name) or parse_rss(_get(url.format(page=page)), name)
+        if not batch:
+            misses += 1  # inc42 sometimes 404s one page and serves the next fine
+            if misses >= 3:
+                break
+            continue
+        misses = 0
+        items += batch
+        oldest = min((_iso(i["date"]) for i in batch if _iso(i["date"])), default="")
+        if oldest and cutoff and oldest < cutoff:
+            break
     return items
 
 
@@ -130,7 +148,7 @@ def search_headlines(profile, days):
         queries.append(term if re.search(r"\b(raises?|funding|invest)", term) else f"{term} raises")
     cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
     batches = [(q, _rss(q, days, ed)) for q in queries for ed in EDITIONS]
-    batches += [(name, _feed(name)) for name in FEEDS]
+    batches += [(name, _feed(name, cutoff)) for name in FEEDS]
     seen, out = set(), []
     for q, items in batches:
         for item in items:
@@ -197,6 +215,8 @@ INVEST = re.compile(r"^(?P<inv>.+?)\s+(?:invests|makes (?:a )?(?:strategic |grow
                     r"(?P<co>.+?)(?:,|\s+to\s+|\s+for\s+|\s+as\s+|$)(?P<rest>.*)", re.I)
 LAUNCH = re.compile(r"(?:launches|introduces|unveils|debuts)\s+(?P<desc>.*?)\b(?:startup|platform|company)\s+"
                     r"['‘’\"]?(?P<co>[A-Z][\w&.\-]*(?:\s[A-Z][\w&.\-]*){0,2})['‘’\"]?\s+with\s+(?P<rest>.+)", re.I)
+FLOAT = re.compile(r"(?:floats|launches|unveils|starts|debuts)\s+(?:new\s+|a\s+)?(?P<desc>.*?)\b(?:startup|venture|company)\s+"
+                   r"['‘’\"]?(?P<co>[A-Z][\w&.\-]*(?:\s[A-Z][\w&.\-]*){0,2})['‘’\"]?\s*$", re.I)
 EMERGE = re.compile(r"^(?P<co>.+?)\s+(?:launches|emerges from stealth|comes out of stealth|debuts|exits stealth)"
                     r"\s+(?:\w+\s+){0,3}?with\s+(?P<rest>.+)$", re.I)
 MONEY_WORDS = re.compile(r"funding|round|investment|capital|seed|series|\$|₹|rs\.?\s*\d|€|£|crore|million|mn\b", re.I)
@@ -213,6 +233,8 @@ def _company(raw):
     # "E&S underwriter Aurenity": a lowercase word in the middle means everything
     # up to it is a description, and the company is the capitalised words after it
     lower = [i for i, w in enumerate(words) if w[:1].islower()]
+    if lower and lower[-1] == len(words) - 1:
+        return None, desc  # "Elio buys a brokerage and" - a clause, not a company name
     if lower and lower[-1] < len(words) - 1:
         desc = " ".join(filter(None, [desc, " ".join(words[:lower[-1] + 1])]))
         words = words[lower[-1] + 1:]
@@ -228,9 +250,35 @@ def _purpose(rest):
     return m.group(1).strip() if m else ""
 
 
-def rule_extract(headline):
-    """A raise dict from one headline, or None. No llm."""
+def _article_lead(url, chars=4000):
+    """The opening text of an article on a direct feed (not a google redirect)."""
+    if not url or "news.google.com" in url:
+        return ""
+    page = _get(url)
+    page = re.sub(r"(?is)<(script|style|noscript|svg|nav|header|footer)[^>]*>.*?</\1>", " ", page)
+    paras = re.findall(r"(?is)<p[^>]*>(.*?)</p>", page)
+    return re.sub(r"\s+", " ", _clean(" ".join(paras)))[:chars]
+
+
+def rule_extract(headline, read_article=False):
+    """A raise dict from one headline, or None. No llm.
+
+    "Nutanix Founder Ajeet Singh Floats New AI Martech Startup Different" names a
+    new company but no money; with read_article=True the article's opening text
+    is checked for the raise ("...with $48 Mn in seed funding")."""
     title = headline["title"]
+    m = FLOAT.search(title)
+    if m and not parse_amount(title)[0]:
+        if not read_article:
+            return None
+        text = " ".join([headline.get("summary", ""), _article_lead(headline.get("link"))])
+        usd, original = parse_amount(text)
+        name, desc = _company(m.group("co"))
+        if not (usd and name and re.search(r"\b(seed|funding|raised|round|backed|investment)\b", text, re.I)):
+            return None
+        return {"company": name, "amount": usd, "amount_text": original, "round": parse_round(text),
+                "what_they_do": " ".join(x for x in (desc, m.group("desc")) if x).strip(),
+                "country": None, "extracted_by": "rule-based"}
     for rx, kind in ((LAUNCH, "launch"), (INVEST, "invest"), (EMERGE, "raise"), (RAISE, "raise")):
         m = rx.search(title)
         if not m:
@@ -321,7 +369,7 @@ def extract_raises(headlines, model=None, use_llm=None):
             except LLMError:
                 pairs = None  # fall back to rules for this batch
         if pairs is None:
-            pairs = [(h, r) for h in chunk for r in [rule_extract(h)] if r]
+            pairs = [(h, r) for h in chunk for r in [rule_extract(h, read_article=True)] if r]
         for h, r in pairs:
             found.append({**r, "headline": h["title"], "url": h["link"], "date": h["date"],
                           "news_source": h.get("source", "")})
@@ -345,8 +393,11 @@ def dedupe(raises):
     kept = []
     for r in raises:
         key = _company_key(r["company"]) or r["company"].lower()
+        # same company + same amount is the same raise, even if outlets label the
+        # round differently; with no amounts to compare, the round has to agree
         match = next((k for k in kept if k["_key"] == key and _same_amount(k["amount"], r["amount"])
-                      and (not k["round"] or not r["round"] or k["round"] == r["round"])), None)
+                      and ((k["amount"] and r["amount"]) or not k["round"] or not r["round"]
+                           or k["round"] == r["round"])), None)
         if not match:
             kept.append({**r, "_key": key, "sources": [r["url"]] if r["url"] else []})
             continue

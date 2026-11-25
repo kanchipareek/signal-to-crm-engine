@@ -82,7 +82,7 @@ def test_headlines_are_deduped_and_dated(monkeypatch):
 def test_buyer_queries_are_searched(monkeypatch):
     seen = []
     monkeypatch.setattr(news, "_rss", lambda q, days, edition="us": seen.append((q, edition)) or [])
-    monkeypatch.setattr(news, "_feed", lambda name: [])
+    monkeypatch.setattr(news, "_feed", lambda name, cutoff="": [])
     news.search_headlines(PROFILE, 14)
     assert ("legal ai raises", "us") in seen
     assert ("legal ai raises", "in") in seen          # every query runs on the india edition too

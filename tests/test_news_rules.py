@@ -78,6 +78,7 @@ def test_purpose_clause_becomes_the_description():
     "Seed Funding Explained: A Guide for Tech Startups",
     "Acme secures contract with US Navy",
     "Gateway EduConnect appoints Jitendra Singh Gusain as CBO",
+    "Elio buys a brokerage and raises $5.1M to scale its loan officers",   # a clause, not a company
 ])
 def test_rule_extract_ignores_non_raises(headline):
     assert rule_extract({"title": headline}) is None
@@ -104,3 +105,9 @@ def test_dedupe_merges_outlets_on_company_amount_round():
 def test_dedupe_keeps_two_different_rounds_apart():
     out = dedupe([raise_row("Acme", 2_000_000, "seed", "a"), raise_row("Acme", 20_000_000, "series a", "b")])
     assert len(out) == 2
+
+
+def test_dedupe_merges_same_amount_even_if_rounds_disagree():
+    # one outlet said series a, another's headline made the parser say debt
+    out = dedupe([raise_row("Humyn Labs", 47_000_000, "series a", "a"), raise_row("Humyn Labs", 47_000_000, "debt", "b")])
+    assert len(out) == 1 and out[0]["sources"] == ["a", "b"]

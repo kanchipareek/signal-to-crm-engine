@@ -1,0 +1,164 @@
+{
+  "seller": "tripledart.com",
+  "seller_name": "TripleDart",
+  "sells": "TripleDart is an AI-native B2B SaaS marketing agency that builds and operates full-stack growth engines spanning organic SEO, AI search optimization, paid media, account-based marketing, and RevOps.",
+  "buyers": "Fast-growing B2B technology companies, SaaS startups, and scaleups buy this service to rapidly scale their pipeline, improve paid acquisition efficiency, and dominate organic and AI-powered search engines. They need external marketing expertise and execution power to build a predictable revenue engine without managing an oversized internal team.",
+  "buyer_roles": [
+    "vp of marketing",
+    "chief revenue officer",
+    "head of growth",
+    "director of demand generation",
+    "head of performance marketing"
+  ],
+  "buyer_industries": [
+    "b2b saas",
+    "enterprise software",
+    "fintech",
+    "developer tools",
+    "artificial intelligence",
+    "workflow automation",
+    "customer engagement platforms"
+  ],
+  "competitors": [
+    "sanborns.com",
+    "npdigital.com",
+    "growfusely.com",
+    "SingleGrain.com"
+  ],
+  "news_queries": [
+    "b2b saas funding",
+    "enterprise software series b",
+    "fintech platform expansion",
+    "ai workflow startup growth",
+    "b2b tech series a"
+  ],
+  "hire_keywords": [
+    "abm",
+    "account-based marketing",
+    "content marketing",
+    "demand generation",
+    "growth marketing",
+    "paid acquisition",
+    "performance marketing",
+    "revenue operations",
+    "revops",
+    "seo"
+  ],
+  "exclude_title_words": [
+    "assistant",
+    "coordinator",
+    "intern",
+    "junior",
+    "recruiter",
+    "sales",
+    "support"
+  ],
+  "hire_reason": "Hiring for leadership and execution roles in growth and demand generation signals that the company is actively scaling its go-to-market motion and needs external agency firepower to accelerate pipeline.",
+  "ops_pain_keywords": [
+    "content writer",
+    "growth specialist",
+    "marketing generalist",
+    "marketing specialist",
+    "ppc specialist",
+    "seo specialist"
+  ],
+  "ops_pain_reason": "Hiring scattered individual contributors for manual marketing tasks indicates the company lacks a unified, scalable growth system and needs a full-stack agency partner.",
+  "form_d_industry_groups": [
+    "Commercial",
+    "Computers",
+    "Other Technology",
+    "Other Banking and Financial Services",
+    "Business Services"
+  ],
+  "min_raise_usd": 2000000,
+  "max_raise_usd": 50000000,
+  "startups_only": false,
+  "funding_reason": "A fresh funding round provides these companies with the capital needed to aggressively invest in customer acquisition, paid media, and outsourced agency growth engines.",
+  "example_buyers": [
+    {
+      "name": "Plivo",
+      "domain": "plivo.com"
+    },
+    {
+      "name": "Glean",
+      "domain": "glean.com"
+    },
+    {
+      "name": "CleverTap",
+      "domain": "clevertap.com"
+    },
+    {
+      "name": "Swym",
+      "domain": "swym.it"
+    },
+    {
+      "name": "Signeasy",
+      "domain": "signeasy.com"
+    },
+    {
+      "name": "Meegle",
+      "domain": "meegle.com"
+    },
+    {
+      "name": "Sprinto",
+      "domain": "sprinto.com"
+    },
+    {
+      "name": "Amberflo",
+      "domain": "amberflo.io"
+    },
+    {
+      "name": "Census",
+      "domain": "getcensus.com"
+    },
+    {
+      "name": "Hightouch",
+      "domain": "hightouch.com"
+    },
+    {
+      "name": "Atlan",
+      "domain": "atlan.com"
+    },
+    {
+      "name": "Perfony",
+      "domain": "perfony.com"
+    },
+    {
+      "name": "Klue",
+      "domain": "klue.com"
+    },
+    {
+      "name": "Uniphore",
+      "domain": "uniphore.com"
+    },
+    {
+      "name": "Instatus",
+      "domain": "instatus.com"
+    },
+    {
+      "name": "Attentive",
+      "domain": "attentive.com"
+    },
+    {
+      "name": "Chameleon",
+      "domain": "chameleon.io"
+    },
+    {
+      "name": "Userflow",
+      "domain": "userflow.com"
+    },
+    {
+      "name": "Laminar",
+      "domain": "laminar.ai"
+    },
+    {
+      "name": "Detectify",
+      "domain": "detectify.com"
+    },
+    {
+      "name": "Red Sift",
+      "domain": "redsift.com"
+    }
+  ],
+  "made_by": "gemini, from their website"
+}

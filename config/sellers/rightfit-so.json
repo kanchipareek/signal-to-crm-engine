@@ -1,0 +1,174 @@
+{
+  "seller": "rightfit.so",
+  "seller_name": "Rightfit",
+  "sells": "Rightfit is a proof-of-work based hiring platform that connects tech startups and scale-ups with verified engineering, design, and product talent.",
+  "buyers": "Startups and scale-ups, mostly in India (Bengaluru, Hyderabad, Gurugram, Mumbai) and remote-first teams, that are hiring engineers, designers and product people. They use Rightfit to source candidates whose real work (code, products, portfolios) is already verified, instead of screening resumes, and a fresh raise usually means a hiring push.",
+  "buyer_roles": [
+    "head of talent",
+    "talent acquisition lead",
+    "technical recruiter",
+    "engineering manager",
+    "founding engineer",
+    "vp of engineering",
+    "chief technology officer",
+    "head of product"
+  ],
+  "buyer_industries": [
+    "ai startup",
+    "artificial intelligence",
+    "consumer tech",
+    "data infrastructure",
+    "deep tech",
+    "developer tools",
+    "enterprise software",
+    "fintech",
+    "robotics",
+    "saas",
+    "software development"
+  ],
+  "competitors": [
+    "wellfound.com",
+    "instahyre.com",
+    "cutshort.io",
+    "hired.com",
+    "toptal.com"
+  ],
+  "news_queries": [
+    "bengaluru startup raises",
+    "indian ai startup raises",
+    "indian saas startup raises",
+    "hyderabad startup raises",
+    "india tech startup series a"
+  ],
+  "hire_keywords": [
+    "engineer",
+    "software engineer",
+    "backend engineer",
+    "frontend engineer",
+    "full stack engineer",
+    "ai engineer",
+    "machine learning engineer",
+    "data engineer",
+    "founding engineer",
+    "product engineer",
+    "designer",
+    "product designer",
+    "ux designer",
+    "design engineer",
+    "product manager",
+    "product lead",
+    "engineering manager",
+    "head of engineering"
+  ],
+  "exclude_title_words": [
+    "intern",
+    "internship",
+    "sales engineer",
+    "support engineer",
+    "legal",
+    "finance"
+  ],
+  "hire_reason": "Hiring for engineering, design and product roles means they have open seats that Rightfit fills with candidates whose work is already verified.",
+  "ops_pain_keywords": [
+    "recruiter",
+    "technical recruiter",
+    "talent acquisition",
+    "sourcer",
+    "talent sourcer",
+    "recruiting coordinator"
+  ],
+  "ops_pain_reason": "Hiring recruiters and sourcers means they're screening candidates by hand - the work Rightfit's verified profiles cut out.",
+  "form_d_industry_groups": [
+    "Computers",
+    "Other Technology",
+    "Business Services",
+    "Commercial"
+  ],
+  "min_raise_usd": 1000000,
+  "max_raise_usd": 100000000,
+  "startups_only": true,
+  "funding_reason": "A fresh funding raise provides startups with the capital needed to rapidly scale their engineering teams and invest in modern hiring platforms.",
+  "example_buyers": [
+    {
+      "name": "Smallest AI",
+      "domain": "smallest.ai"
+    },
+    {
+      "name": "Lyzr AI",
+      "domain": "lyzr.ai"
+    },
+    {
+      "name": "Traycer",
+      "domain": "traycer.ai"
+    },
+    {
+      "name": "Dodge AI",
+      "domain": "dodgeai.com"
+    },
+    {
+      "name": "Stack AI",
+      "domain": "stack-ai.com"
+    },
+    {
+      "name": "Runable",
+      "domain": "runable.com"
+    },
+    {
+      "name": "Postman",
+      "domain": "postman.com"
+    },
+    {
+      "name": "Wandb",
+      "domain": "wandb.ai"
+    },
+    {
+      "name": "LangChain",
+      "domain": "langchain.com"
+    },
+    {
+      "name": "Pinecone",
+      "domain": "pinecone.io"
+    },
+    {
+      "name": "Vercel",
+      "domain": "vercel.com"
+    },
+    {
+      "name": "Supabase",
+      "domain": "supabase.com"
+    },
+    {
+      "name": "Render",
+      "domain": "render.com"
+    },
+    {
+      "name": "Linear",
+      "domain": "linear.app"
+    },
+    {
+      "name": "Resend",
+      "domain": "resend.com"
+    },
+    {
+      "name": "Retool",
+      "domain": "retool.com"
+    },
+    {
+      "name": "PostHog",
+      "domain": "posthog.com"
+    },
+    {
+      "name": "Ashby",
+      "domain": "ashbyhq.com"
+    },
+    {
+      "name": "Ramp",
+      "domain": "ramp.com"
+    },
+    {
+      "name": "Deel",
+      "domain": "deel.com"
+    }
+  ],
+  "made_by": "gemini, from their website, then edited by hand (hire signals and raise range)"
+}

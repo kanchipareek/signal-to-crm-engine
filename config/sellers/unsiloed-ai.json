@@ -2,7 +2,7 @@
   "seller": "unsiloed.ai",
   "seller_name": "Unsiloed AI",
   "sells": "Unsiloed AI provides document parsing, extraction, and splitting APIs built on dual-stream vision models to convert PDFs, images, and spreadsheets into structured JSON and Markdown for LLMs and AI agents.",
-  "buyers": "Fintechs, legal tech platforms, healthcare software companies, and logistics applications buy this to automate the ingestion and processing of complex documents like financial statements, legal contracts, medical records, and shipping invoices. They need robust data extraction that preserves tables, layouts, and hierarchical structures to feed their AI agents and LLM pipelines.",
+  "buyers": "Companies whose operations run on documents and still process them by hand: lenders (mortgage, heloc, consumer and smb lending), insurers and MGAs (including E&S and specialty underwriters), legal operations and legal tech, and healthcare operations (revenue cycle, claims, prior auth). Also AI startups building agents for those industries on top of PDFs, statements and forms. They buy Unsiloed to turn loan files, policies, claims and contracts into structured data instead of keying it in.",
   "buyer_roles": [
     "Head of AI",
     "Head of Engineering",
@@ -20,12 +20,14 @@
     "instabase.com"
   ],
   "news_queries": [
-    "legal ai",
-    "insurance claims automation",
-    "fintech document processing",
-    "mortgage automation platform",
-    "healthcare revenue cycle management",
-    "logistics invoice automation"
+    "mortgage lender raises",
+    "mga raises",
+    "insurtech raises",
+    "e&s insurance funding",
+    "lending startup raises",
+    "legal ai raises",
+    "healthcare revenue cycle raises",
+    "heloc lender funding"
   ],
   "hire_keywords": [
     "claims automation",
@@ -38,7 +40,6 @@
     "pdf parsing"
   ],
   "exclude_title_words": [
-    "assistant",
     "devops",
     "frontend",
     "intern",
@@ -51,15 +52,17 @@
   "hire_reason": "Hiring for specialized data extraction or document automation roles indicates the company is actively building or scaling AI workflows that require advanced PDF and spreadsheet parsing.",
   "form_d_industry_groups": [
     "Business Services",
-    "Computers",
-    "Other Technology",
-    "Other Banking and Financial Services",
     "Commercial",
+    "Computers",
     "Health Insurance",
-    "Other Health Care"
+    "Insurance",
+    "Other Banking and Financial Services",
+    "Other Health Care",
+    "Other Technology",
+    "REITS and Finance"
   ],
   "min_raise_usd": 1000000,
-  "max_raise_usd": 30000000,
+  "max_raise_usd": 100000000,
   "startups_only": true,
   "funding_reason": "A fresh funding round provides startups with the capital needed to build production-grade AI agents and document processing pipelines, scaling their API consumption.",
   "example_buyers": [
@@ -140,5 +143,41 @@
       "domain": "unit.co"
     }
   ],
-  "made_by": "gemini, from their website"
+  "made_by": "gemini, from their website, then edited by hand (buyers, ops-pain titles, news searches)",
+  "buyer_industries": [
+    "mortgage lending",
+    "heloc",
+    "consumer lending",
+    "smb lending",
+    "lending",
+    "insurance",
+    "insurtech",
+    "mga",
+    "e&s insurance",
+    "specialty insurance",
+    "underwriting",
+    "legal operations",
+    "legal tech",
+    "healthcare operations",
+    "revenue cycle",
+    "claims"
+  ],
+  "ops_pain_keywords": [
+    "loan processor",
+    "mortgage processor",
+    "underwriting assistant",
+    "claims processor",
+    "claims specialist",
+    "document review",
+    "loan operations",
+    "loan setup",
+    "closing coordinator",
+    "underwriter assistant",
+    "data entry",
+    "document specialist",
+    "claims adjuster",
+    "medical records",
+    "prior authorization"
+  ],
+  "ops_pain_reason": "They're hiring people to read loan files, claims and policies by hand - exactly the documents Unsiloed parses into structured data."
 }

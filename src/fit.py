@@ -14,9 +14,15 @@ import html
 import re
 
 from src.leads import fetch_home
-from src.llm import LLMError, ask_json
+from src.llm import LLMError, ask_json, has_key
+from src.match import _has, _norm_text
 
 BATCH = 15
+STOP = set("""a an the and or of for to in on with by at from into that this these those their its it is are be
+who which what why how they them we our you your as such like need needs want wants use uses using buy buys
+companies company business businesses teams team startups startup scaleups growing large small mid market
+raises raise funding round platform platforms software tool tools product products service services data
+help helps more most also any all new than other within across based""".split())
 
 
 def describe(lead):
@@ -62,10 +68,63 @@ Companies:
 """
 
 
-def check_fit(leads, profile, model=None):
-    """Adds 'fit' and 'fit_reason' to each lead. Leads it can't judge stay 'maybe'."""
+def _phrases(profile):
+    out = []
+    for p in profile.get("buyer_industries", []) + profile.get("news_queries", []):
+        p = re.sub(r"\b(raises?|funding|startups?|companies|investment)\b", "", _norm_text(p)).strip()
+        if p and p not in out:
+            out.append(p)
+    return out
+
+
+def _words(profile):
+    text = " ".join([profile.get("buyers", "")] + _phrases(profile))
+    return sorted({w for w in _norm_text(text).split() if len(w) > 3 and w not in STOP})
+
+
+def rule_fit(lead, profile):
+    """Keyword fit check, no llm: does the description name the seller's buyers?
+
+    yes   - it names one of the buyer industries / news phrases ('mortgage lender'),
+            or the company is hiring people to do by hand what the seller automates
+    maybe - it shares one or two words with the buyer description, or there's
+            nothing to judge by
+    no    - it's a competitor, or its description shares nothing with the buyers
+    """
+    domain = (lead.get("domain") or "").lower()
+    if domain and domain in {c.lower().removeprefix("www.") for c in profile.get("competitors", [])}:
+        return "no", "a competitor"
+    if any(h.get("kind") == "ops_pain" for h in lead.get("hires", [])):
+        titles = ", ".join(h["title"] for h in lead["hires"] if h.get("kind") == "ops_pain")[:120]
+        return "yes", f"hiring people to do by hand what {profile['seller_name']} automates ({titles})"
+    desc = _norm_text(lead.get("description", ""))
+    if not desc or desc == "no description found":
+        return "maybe", "no description to judge by"
+    for phrase in _phrases(profile):
+        words = phrase.split()
+        if _has(desc, phrase) or (len(words) > 1 and all(_has(desc, w) for w in words)):
+            return "yes", f"its description mentions '{phrase}'"
+    hits = [w for w in _words(profile) if _has(desc, w)]
+    if hits:
+        return "maybe", f"shares words with the buyer description: {', '.join(hits[:4])}"
+    return "no", f"nothing in its description matches who {profile['seller_name']} sells to"
+
+
+def check_fit(leads, profile, model=None, use_llm=None):
+    """Adds 'fit', 'fit_reason' and 'fit_by' to each lead.
+
+    With a gemini key, gemini judges in batches; a batch that fails twice falls
+    back to the keyword check. Without a key, everything uses the keyword check.
+    Returns how many batches had to fall back.
+    """
+    use_llm = has_key() if use_llm is None else use_llm
     for lead in leads:
         lead.setdefault("description", describe(lead))
+    if not use_llm:
+        for lead in leads:
+            lead["fit"], lead["fit_reason"] = rule_fit(lead, profile)
+            lead["fit_by"] = "rule-based"
+        return 0
     failed = 0
     for start in range(0, len(leads), BATCH):
         chunk = leads[start:start + BATCH]
@@ -84,8 +143,9 @@ def check_fit(leads, profile, model=None):
                 last = exc
         if reply is None:
             failed += 1
-            if failed == len(range(0, len(leads), BATCH)):
-                raise last  # every batch failed: say so instead of pretending it ran
+            for lead in chunk:  # gemini failed twice on this batch: use the keyword check
+                lead["fit"], lead["fit_reason"] = rule_fit(lead, profile)
+                lead["fit_by"] = "rule-based"
             continue
         for r in reply.get("leads", []):
             try:
@@ -96,7 +156,9 @@ def check_fit(leads, profile, model=None):
             if fit in ("yes", "maybe", "no"):
                 lead["fit"] = fit
                 lead["fit_reason"] = r.get("reason", "")
+                lead["fit_by"] = "gemini"
     for lead in leads:
-        lead.setdefault("fit", "maybe")
-        lead.setdefault("fit_reason", "")
+        if "fit" not in lead:  # gemini skipped it in its reply
+            lead["fit"], lead["fit_reason"] = rule_fit(lead, profile)
+            lead["fit_by"] = "rule-based"
     return failed

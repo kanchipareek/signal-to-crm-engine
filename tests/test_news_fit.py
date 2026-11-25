@@ -109,8 +109,8 @@ def test_extract_raises_maps_gemini_reply_to_headlines(monkeypatch):
 
 # --- fit check -----------------------------------------------------------------
 
-def test_fit_check_labels_and_keeps_unjudged_as_maybe(monkeypatch):
-    monkeypatch.setattr(fit, "describe", lambda lead: lead["name"])
+def test_fit_check_labels_and_falls_back_for_unjudged(monkeypatch):
+    monkeypatch.setattr(fit, "describe", lambda lead: lead["desc"])
     replies = {"leads": [{"id": 0, "fit": "yes", "reason": "legal ai on fund documents"},
                          {"id": 1, "fit": "no", "reason": "builds its own models, a peer"}]}
     seen = {}
@@ -119,14 +119,16 @@ def test_fit_check_labels_and_keeps_unjudged_as_maybe(monkeypatch):
         seen["prompt"] = prompt
         return replies
     monkeypatch.setattr(fit, "ask_json", fake_ask)
-    batch = [{"name": "Perry AI"}, {"name": "Perplexity AI"}, {"name": "Mystery Co"}]
-    fit.check_fit(batch, PROFILE)
-    assert [l["fit"] for l in batch] == ["yes", "no", "maybe"]
+    batch = [{"name": "Perry AI", "desc": "x"}, {"name": "Perplexity AI", "desc": "y"},
+             {"name": "Mystery Co", "desc": "legal ai for law firms"}]
+    fit.check_fit(batch, PROFILE, use_llm=True)
+    assert [l["fit"] for l in batch] == ["yes", "no", "yes"]
+    assert [l["fit_by"] for l in batch] == ["gemini", "gemini", "rule-based"]  # gemini skipped #2
     assert "llamaindex.ai" in seen["prompt"]       # competitors are passed to gemini
 
 
-def test_one_broken_batch_doesnt_sink_the_fit_check(monkeypatch):
-    monkeypatch.setattr(fit, "describe", lambda lead: lead["name"])
+def test_one_broken_batch_falls_back_to_keywords(monkeypatch):
+    monkeypatch.setattr(fit, "describe", lambda lead: lead["desc"])
     monkeypatch.setattr(fit, "BATCH", 1)
     calls = []
 
@@ -136,18 +138,31 @@ def test_one_broken_batch_doesnt_sink_the_fit_check(monkeypatch):
             raise fit.LLMError("model didn't return valid json")
         return {"leads": [{"id": 0, "fit": "no", "reason": "peer"}]}
     monkeypatch.setattr(fit, "ask_json", flaky)
-    batch = [{"name": "Broken Co"}, {"name": "Peer Co"}]
-    failed = fit.check_fit(batch, PROFILE)
+    batch = [{"name": "Broken Co", "desc": "insurance claims automation"}, {"name": "Peer Co", "desc": "z"}]
+    failed = fit.check_fit(batch, PROFILE, use_llm=True)
     assert failed == 1
-    assert [l["fit"] for l in batch] == ["maybe", "no"]   # the bad batch stays maybe, the rest still judged
+    assert [l["fit"] for l in batch] == ["yes", "no"]
+    assert [l["fit_by"] for l in batch] == ["rule-based", "gemini"]
     assert len(calls) == 3                               # bad batch retried once
 
 
-def test_all_batches_failing_is_an_error(monkeypatch):
-    monkeypatch.setattr(fit, "describe", lambda lead: lead["name"])
-    monkeypatch.setattr(fit, "ask_json", lambda p, model=None: (_ for _ in ()).throw(fit.LLMError("down")))
-    with pytest.raises(fit.LLMError):
-        fit.check_fit([{"name": "A"}], PROFILE)
+def test_without_a_key_everything_is_rule_based(monkeypatch):
+    monkeypatch.setattr(fit, "describe", lambda lead: lead["desc"])
+    monkeypatch.setattr(fit, "ask_json", lambda *a, **k: pytest.fail("no llm without a key"))
+    batch = [{"name": "A", "desc": "legal ai for funds"}, {"name": "B", "desc": "dog food delivery"},
+             {"name": "C", "desc": "no description found"}, {"name": "D", "domain": "reducto.ai", "desc": "parsing"}]
+    fit.check_fit(batch, PROFILE, use_llm=False)
+    assert [l["fit"] for l in batch] == ["yes", "no", "maybe", "no"]
+    assert all(l["fit_by"] == "rule-based" for l in batch)
+    assert batch[3]["fit_reason"] == "a competitor"
+
+
+def test_ops_pain_hire_makes_a_rule_based_yes():
+    lead = {"name": "Tomo", "description": "home buying", "hires": [
+        {"title": "Mortgage Loan Processor", "kind": "ops_pain"}]}
+    fit_, reason = fit.rule_fit(lead, PROFILE)
+    assert fit_ == "yes"
+    assert "Mortgage Loan Processor" in reason
 
 
 def test_descriptions_from_every_outlet_are_merged(monkeypatch):

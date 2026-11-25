@@ -21,6 +21,8 @@ stays in as "amount not disclosed" - a strategic or PE investment often has none
 """
 import html
 import re
+import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -50,13 +52,31 @@ UNIT = {"k": 1e3, "thousand": 1e3, "m": 1e6, "mn": 1e6, "mln": 1e6, "million": 1
 
 # --- fetching ----------------------------------------------------------------------
 
+GOOGLE_GAP = 1.5      # seconds between google news requests; it returns 429 if you go faster
+_last_google = [0.0]
+
+
 def _get(url):
-    req = urllib.request.Request(url, headers={"User-Agent": UA})
-    try:
-        with urllib.request.urlopen(req, timeout=20) as resp:
-            return resp.read().decode("utf-8", "ignore")
-    except Exception:
-        return ""
+    """Page text, or '' on failure. Google News gets spaced out, and a 429 is retried with backoff."""
+    is_google = "news.google.com" in url
+    for attempt in range(3):
+        if is_google:
+            wait = _last_google[0] + GOOGLE_GAP - time.monotonic()
+            if wait > 0:
+                time.sleep(wait)
+            _last_google[0] = time.monotonic()
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                return resp.read().decode("utf-8", "ignore")
+        except urllib.error.HTTPError as exc:
+            if exc.code == 429 and attempt < 2:
+                time.sleep(20 * (attempt + 1))
+                continue
+            return ""
+        except Exception:
+            return ""
+    return ""
 
 
 def _clean(text):

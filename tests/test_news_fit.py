@@ -69,6 +69,7 @@ class Resp:
 
 def test_headlines_are_deduped_and_dated(monkeypatch):
     import datetime as real
+    monkeypatch.setattr(news, "GOOGLE_GAP", 0)
     monkeypatch.setattr(news.urllib.request, "urlopen", lambda req, timeout=0: Resp(RSS.encode()))
     monkeypatch.setattr(news, "datetime", type("FixedNow", (), {
         "now": staticmethod(lambda tz=None: real.datetime(2026, 11, 24, tzinfo=tz))}))

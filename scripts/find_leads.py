@@ -36,6 +36,7 @@ from src.fit import check_fit
 from src.leads import (find_board, find_domain, looks_like_fund, match_hires, name_core,
                        sec_by_name, score, site_exists, why)
 from src.news import extract_raises, search_headlines
+from src.people import find_people
 from src.llm import LLMError
 from src.sec import fetch_form_d, filing_url, list_form_d, search_recent_form_d
 from src.seller import load_or_build, profile_path, slug
@@ -45,6 +46,12 @@ OUT_DIR = ROOT / "leads"
 
 def log(msg):
     print(msg, flush=True)
+
+
+def sec_people(people, url):
+    """Form D's related persons in the same shape as everyone else: name, title, source."""
+    return [{"name": p["name"], "title": ", ".join(p["roles"]) or "listed on the filing", "source": url}
+            for p in people or []]
 
 
 def funding_rule(profile, days):
@@ -102,7 +109,7 @@ def scan_form_d(profile, days, max_filings):
             continue  # same company, two filings: keep the bigger one
         by_cik[r["cik"]] = {
             "name": filing["entity_name"] or r["name"], "cik": r["cik"], "domain": None,
-            "location": r["location"], "funding": funding, "people": filing["people"],
+            "location": r["location"], "funding": funding, "people": sec_people(filing["people"], funding["url"]),
             "industry_group": filing["industry_group"],
             "people_from": f"form d filed {r['filing_date']}", "found_via": "raised (sec form d)",
         }
@@ -184,7 +191,7 @@ def enrich(c, profile, rule):
                 originals = [f for f in filings if f["form"] == "D"]
                 if originals:
                     latest = {**fetch_form_d(c["cik"], originals[0]["accession"]), **originals[0]}
-                    c["people"] = latest["people"]
+                    c["people"] = sec_people(latest["people"], filing_url(c["cik"], latest["accession"]))
                     c["people_from"] = f"form d filed {latest['filing_date']} (matched by exact name: {c['sec_name']})"
                     if not c.get("funding"):  # don't overwrite a raise we already know from the news
                         c["funding"] = funding_from(latest, c["cik"], rule, profile)
@@ -193,10 +200,29 @@ def enrich(c, profile, rule):
     return c
 
 
+def add_people(lead):
+    """No sec filing? Look for founders / ceo / coo in the raise article and the
+    company's own about and team pages. Only names with a title next to them."""
+    if lead.get("people"):
+        return lead
+    articles = (lead.get("funding") or {}).get("sources", [])
+    try:
+        lead["people"] = find_people(lead.get("domain"), articles)
+    except Exception:
+        lead["people"] = []
+    if lead["people"]:
+        lead["people_from"] = "their own site or the raise article"
+    return lead
+
+
 # --- step 4: report ------------------------------------------------------------------
 
 def people_text(people):
-    return "; ".join(f"{p['name']} ({', '.join(p['roles']) or 'listed'})" for p in people or [])
+    return "; ".join(f"{p['name']} ({p['title']})" for p in people or [])
+
+
+def people_md(people):
+    return "; ".join(f"{p['name']} ({p['title']}, [source]({p['source']}))" for p in people or [])
 
 
 def write_report(profile, leads, days, rejected=()):
@@ -233,9 +259,9 @@ def write_report(profile, leads, days, rejected=()):
         for reason in l["why"]:
             lines.append(f"- **why:** {reason}")
         if l.get("people"):
-            lines.append(f"- **people on their sec filing:** {people_text(l['people'])} ({l['people_from']})")
+            lines.append(f"- **people:** {people_md(l['people'])}")
         else:
-            lines.append("- **people:** not found. there's no matching sec filing, so check their site or linkedin")
+            lines.append("- **people:** not found on an sec filing, the raise article or their site. check linkedin")
         if l.get("funding"):
             label = "news" if l["funding"].get("source") == "news" else "filing"
             lines.append(f"- **{label}:** {l['funding']['url']}")
@@ -319,6 +345,9 @@ def main():
             log(f"  {len(rejected)} dropped as not a fit, {sum(c['fit'] == 'yes' for c in with_signal)} clear fits")
         except LLMError as exc:
             log(f"  ! fit check skipped: {exc}")
+    log(f"  looking up founders / ceo for {sum(1 for c in with_signal if not c.get('people'))} leads without an sec filing")
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        with_signal = list(pool.map(add_people, with_signal))
     leads = []
     for c in with_signal:
         c["score"] = score(c)

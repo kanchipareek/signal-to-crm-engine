@@ -32,6 +32,7 @@ sys.path.insert(0, str(ROOT))
 from scripts.run_detector import load_env
 from src.fetch import FetchError, fetch_postings
 from src.funding import classify, format_usd, load_rule
+from src.evidence import PageCache, evidence_rows, verify_lead
 from src.fit import check_fit
 from src.leads import (find_board, find_domain, looks_like_fund, match_hires, name_core,
                        sec_by_name, score, site_exists, why)
@@ -238,7 +239,7 @@ def write_report(profile, leads, days, rejected=()):
                         f.get("amount") or "", f.get("date") or "",
                         " | ".join(h["title"] for h in l["hires"]), people_text(l.get("people")),
                         " ".join(l["why"]),
-                        " ".join([f.get("url", "")] + [h["source_url"] for h in l["hires"][:3]]).strip(),
+                        " ; ".join(f"{k} | {d} | {u}" for k, d, u in evidence_rows(l)),
                         l["found_via"]])
 
     lines = [f"# leads for {profile['seller_name']} ({profile['seller']})", "",
@@ -262,11 +263,9 @@ def write_report(profile, leads, days, rejected=()):
             lines.append(f"- **people:** {people_md(l['people'])}")
         else:
             lines.append("- **people:** not found on an sec filing, the raise article or their site. check linkedin")
-        if l.get("funding"):
-            label = "news" if l["funding"].get("source") == "news" else "filing"
-            lines.append(f"- **{label}:** {l['funding']['url']}")
-        for h in l["hires"][:5]:
-            lines.append(f"- **job:** [{h['title']}]({h['source_url']})")
+        lines.append("- **evidence:**")
+        for kind, day, url in evidence_rows(l)[:8]:
+            lines.append(f"  - {kind} · {day} · {url}")
         lines.append(f"- **found via:** {l['found_via']}")
         lines.append("")
     if rejected:
@@ -348,6 +347,17 @@ def main():
     log(f"  looking up founders / ceo for {sum(1 for c in with_signal if not c.get('people'))} leads without an sec filing")
     with ThreadPoolExecutor(max_workers=args.workers) as pool:
         with_signal = list(pool.map(add_people, with_signal))
+
+    # every job gets fetched again now: still 200, still listing the role, or it's not evidence
+    cache = PageCache()
+    jobs_before = sum(len(c.get("hires", [])) for c in with_signal)
+    with ThreadPoolExecutor(max_workers=args.workers) as pool:
+        ok = list(pool.map(lambda c: verify_lead(c, cache), with_signal))
+    no_evidence = [c for c, keep in zip(with_signal, ok) if not keep]
+    with_signal = [c for c, keep in zip(with_signal, ok) if keep]
+    jobs_dropped = sum(len(c.get("dropped_jobs", [])) for c in with_signal + no_evidence)
+    log(f"  rechecked {jobs_before} job urls: {jobs_dropped} gone or no longer listing the role, "
+        f"{len(no_evidence)} leads dropped for having no evidence left")
     leads = []
     for c in with_signal:
         c["score"] = score(c)

@@ -326,3 +326,46 @@ def test_template_has_both_kinds_of_hiring_signal():
     template = clean(json.loads((ROOT / "config" / "sellers" / "_template.json").read_text(encoding="utf-8")))
     assert template["hire_keywords"] and template["ops_pain_keywords"]
     assert template["buyer_industries"] and template["news_queries"]
+
+
+# --- picking the right website ------------------------------------------------------
+
+def fake_homes(pages):
+    """fetch_home stub: {domain: (final_host, html)}"""
+    return lambda domain: pages.get(domain, (None, ""))
+
+
+def test_description_hint_picks_the_right_company(monkeypatch):
+    # the real case: different.com is some other 'Different'; different.ai is the ai martech startup
+    monkeypatch.setattr(leads, "fetch_home", fake_homes({
+        "different.com": ("different.com", "<title>Different</title> property care, done differently"),
+        "different.ai": ("different.ai", "<title>Different</title> the ai marketing team for b2b"),
+    }))
+    assert leads.find_domain("Different", "AI Martech") == "different.ai"
+    assert leads.find_domain("Different") == "different.com"   # no hint: first confirmed guess
+
+
+def test_word_endings_are_tried():
+    assert leads.guess_domains("Elio Mortgage")[0] == "elio.mortgage"
+
+
+def test_site_builder_previews_are_not_the_company_site():
+    assert not leads.homepage_matches("shamrockai.com", "Shamrock AI", "shamrockai.webflow.io", "Shamrock AI agents")
+
+
+def test_indian_dot_in_is_fine_but_foreign_country_domains_are_not():
+    assert leads.homepage_matches("acme.in", "Acme", "acme.in", "<title>Acme</title>")
+    assert not leads.homepage_matches("alcar.com", "Alcar Inc.", "alcar.se", "Alcar")
+
+
+def test_company_site_from_a_link_in_the_raise_article(monkeypatch):
+    article = ('<a href="https://twitter.com/x">t</a><a href="https://inc42.com/other">i</a>'
+               '<a href="https://www.shamrockus.ai/">Shamrock AI</a>')
+
+    class R(io.BytesIO):
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+    monkeypatch.setattr(leads.urllib.request, "urlopen", lambda req, timeout=0: R(article.encode()))
+    monkeypatch.setattr(leads, "fetch_home", fake_homes({"shamrockus.ai": ("shamrockus.ai", "Shamrock AI - reliable agents")}))
+    assert leads.domain_from_articles("Shamrock AI", ["https://news.google.com/rss/articles/x",
+                                                      "https://inc42.com/buzz/shamrock"]) == "shamrockus.ai"

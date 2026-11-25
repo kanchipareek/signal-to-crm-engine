@@ -34,7 +34,7 @@ from src.fetch import FetchError, fetch_postings
 from src.funding import classify, format_usd, load_rule
 from src.evidence import PageCache, evidence_rows, verify_lead
 from src.fit import check_fit
-from src.leads import (find_board, find_domain, looks_like_fund, match_hires, name_core,
+from src.leads import (domain_from_articles, find_board, find_domain, looks_like_fund, match_hires, name_core,
                        sec_by_name, score, site_exists, why)
 from src.news import extract_raises, search_headlines
 from src.people import find_people
@@ -173,8 +173,12 @@ def enrich(c, profile, rule):
                 c["dropped"] = "website doesn't load (the suggestion may be wrong)"
                 return c
         if not c.get("domain"):
-            c["domain"] = find_domain(c["name"])
-            c["domain_guessed"] = bool(c["domain"])
+            # the raise article's own link to the company beats guessing from the name
+            articles = (c.get("funding") or {}).get("sources", [])
+            c["domain"] = domain_from_articles(c["name"], articles)
+            if not c["domain"]:
+                c["domain"] = find_domain(c["name"], c.get("what_they_do", ""))
+                c["domain_guessed"] = bool(c["domain"])
         if c.get("domain") and "board" not in c:
             c["board"] = find_board(c["name"], c["domain"])
         c["hires"] = []

@@ -17,6 +17,15 @@ from src.match import _has, _norm_text
 
 UA = "Mozilla/5.0 (compatible; signal-to-crm-engine)"
 TLDS = ("com", "ai", "io", "co")
+# word endings companies use as their name's last word: "Elio Mortgage" is elio.mortgage
+WORD_TLDS = {"mortgage", "insurance", "legal", "health", "finance", "capital", "tech", "app", "so",
+             "dev", "bank", "money", "law", "care", "energy", "studio", "agency", "inc", "xyz", "in"}
+# two-letter country endings that are really used as generic ones
+OK_CC = {"ai", "io", "co", "so", "in", "us", "me", "gg", "sh", "fm", "tv", "ly", "to", "vc"}
+SITE_BUILDERS = ("webflow.io", "framer.website", "framer.app", "wixsite.com", "vercel.app", "netlify.app",
+                 "herokuapp.com", "github.io", "carrd.co", "notion.site", "squarespace.com")
+NOT_COMPANY_HOSTS = ("linkedin.com", "twitter.com", "x.com", "facebook.com", "instagram.com", "youtube.com",
+                     "crunchbase.com", "wikipedia.org", "google.com", "bit.ly", "medium.com", "whatsapp.com")
 
 SUFFIX_WORDS = {"inc", "incorporated", "corp", "corporation", "co", "company", "llc", "ltd",
                 "limited", "holdings", "holding", "pbc", "plc", "the", "lp"}
@@ -52,8 +61,8 @@ def guess_domains(entity):
     if len(core) > 1:
         bases.append("-".join(core))
     out = []
-    if len(core) > 1 and core[-1] in TLDS:
-        out.append(f"{''.join(core[:-1])}.{core[-1]}")  # "Perry AI" -> perry.ai
+    if len(core) > 1 and (core[-1] in TLDS or core[-1] in WORD_TLDS):
+        out.append(f"{''.join(core[:-1])}.{core[-1]}")  # "Perry AI" -> perry.ai, "Elio Mortgage" -> elio.mortgage
     for base in dict.fromkeys(bases):
         for tld in TLDS:
             out.append(f"{base}.{tld}")
@@ -94,19 +103,75 @@ def homepage_matches(domain, entity, final_host, page):
     base = domain.split(".")[0].replace("-", "")
     if base not in final_host.replace("-", "").replace(".", ""):
         return False  # redirected somewhere else entirely
-    if final_host.rsplit(".", 1)[-1] not in TLDS:
+    tld = final_host.rsplit(".", 1)[-1]
+    if len(tld) == 2 and tld not in OK_CC:
         return False  # e.g. alcar.com -> alcar.se: a different (foreign) company with the same name
+    if final_host.endswith(SITE_BUILDERS):
+        return False  # shamrockai.com -> shamrockai.webflow.io is a builder preview, not their site
     core = name_core(entity)
     flat = re.sub(r"[^a-z0-9]", "", text[:60000])
     return "".join(core) in flat or all(_has(_norm_text(text[:60000]), w) for w in core)
 
 
-def find_domain(entity):
-    """Guess the company's website from its legal name and confirm it."""
+HINT_STOP = {"startup", "company", "platform", "based", "backed", "new", "the", "and", "for", "with", "its", "to"}
+
+
+def _hint_words(hint):
+    return {w for w in _norm_text(hint).split() if len(w) > 2 and w not in HINT_STOP} | (
+        {"marketing"} if "martech" in (hint or "").lower() else set())
+
+
+def domain_from_articles(entity, urls):
+    """The company's site, from a link in its raise article. Only links whose
+    host contains the company's name (shamrockus.ai for 'Shamrock AI'), and
+    only if that homepage confirms the name. Google redirect links are skipped."""
+    core = [w for w in name_core(entity) if len(w) >= 4] or name_core(entity)
+    if not core:
+        return None
+    seen = set()
+    for url in urls or []:
+        if not url or "news.google.com" in url:
+            continue
+        req = urllib.request.Request(url, headers={"User-Agent": UA})
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                page = resp.read(1_500_000).decode("utf-8", "ignore")
+        except Exception:
+            continue
+        article_host = (urllib.parse.urlparse(url).hostname or "").removeprefix("www.")
+        for host in re.findall(r'href="https?://(?:www\.)?([a-z0-9.-]+\.[a-z]{2,})', page.lower()):
+            if host in seen or host == article_host or host.endswith(NOT_COMPANY_HOSTS + SITE_BUILDERS):
+                continue
+            seen.add(host)
+            if core[0] not in host.replace("-", ""):
+                continue
+            final, home = fetch_home(host)
+            if homepage_matches(host, entity, final, home):
+                return final or host
+    return None
+
+
+def find_domain(entity, hint=""):
+    """Guess the company's website from its legal name and confirm it.
+
+    Without a hint, the first confirmed guess wins. With a hint (what the news
+    says the company does, e.g. "AI Martech"), every guess is checked and the
+    homepage that mentions the most hint words wins. That's how 'Different'
+    lands on different.ai (an ai marketing company) and not different.com,
+    which also says 'Different' on its homepage but is something else."""
+    words = _hint_words(hint)
+    best, best_score = None, -1
     for domain in guess_domains(entity):
         host, page = fetch_home(domain)
-        if homepage_matches(domain, entity, host, page):
+        if not homepage_matches(domain, entity, host, page):
+            continue
+        if not words:
             return host or domain
+        text = _norm_text(re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", page)[:80000])
+        score = sum(1 for w in words if _has(text, w))
+        if score > best_score:
+            best, best_score = host or domain, score
+    return best
     return None
 
 

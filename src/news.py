@@ -210,6 +210,7 @@ def parse_round(text):
 VERBS = r"(?:raises|raised|secures|secured|bags|bagged|nets|netted|lands|closes|closed|gets|receives|" \
         r"grabs|snags|picks up|scores|announces|completes|attracts)"
 DESCRIPTOR = re.compile(r"(?:.*\b(?:startup|start-up|brand|platform|company|firm|maker|provider|unicorn|"
+                        r"insurtech|fintech|edtech|healthtech|proptech|legaltech|martech|agritech|deeptech|"
                         r"-backed|backed|based|-bound|bound|'s|’s)\s+)", re.I)
 RAISE = re.compile(rf"^(?P<co>.+?)\s+{VERBS}\s+(?P<rest>.+)$", re.I)
 INVEST = re.compile(r"^(?P<inv>.+?)\s+(?:invests|makes (?:a )?(?:strategic |growth |minority |majority )?investment|"

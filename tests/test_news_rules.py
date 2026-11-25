@@ -55,6 +55,7 @@ def test_parse_round(text, rnd):
     ("Alpine Specialty raises $3m to automate small contractor E&S underwriting", "Alpine Specialty", 3_000_000, None),
     ("Investment Fund Management Startup Perry AI Announces $2.2M Seed Round", "Perry AI", 2_200_000, "seed"),
     ("CurvetAI raises ₹6 crore pre-seed funding led by Merak Ventures", "CurvetAI", 714_285, "pre-seed"),
+    ("InsurTech Konsileo raises £2.5m to expand broker platform", "Konsileo", 3_175_000, None),
 ])
 def test_rule_extract_real_headlines(headline, company, amount, rnd):
     r = rule_extract({"title": headline})

@@ -145,31 +145,49 @@ python scripts/find_leads.py theirdomain.com
 
 what it does:
 
-1. **works out who they sell to.** it reads their homepage, pricing, customers and about pages, and gemini writes a profile: what they sell, who buys it, which job titles mean a company is building the team that would buy it, and what size of raise means there's budget. it saves this to `config/sellers/<their-domain>.json` so i can read it, fix it, and re-run without asking gemini again.
+1. **works out who they sell to.** it reads their homepage, pricing, customers and about pages, and gemini writes a profile: what they sell, who buys it (and which industries those buyers are in), which job titles are buying signals, the news searches to run, the competitors to skip, and what size of raise means there's budget. it saves this to `config/sellers/<their-domain>.json` so i can read it, fix it, and re-run without asking gemini again.
 2. **finds companies that could be buyers.**
-   - every company that filed a form d in the last 14 days, cut down to real raises in the seller's industries (funds, llcs and amendments dropped).
-   - raises in the news, worldwide. it searches google news for funding headlines, some general and some aimed at the seller's buyers ("legal ai raises"), and gemini pulls out the company, the amount and what it does.
+   - **funding news, us and india.** every news search runs on both the us and the india editions of google news, and it also reads inc42, entrackr and yourstory directly. inc42's funding feed stopped updating in 2023, so it pages back through inc42's live feed until the window is covered. some searches are general, and some are aimed at the seller's buyers ("mortgage lender raises", "bengaluru startup raises").
+   - **sec form d.** every company that filed a form d in the window, cut down to real raises in the seller's industries (funds, llcs and amendments dropped).
    - my account list, and 20 to 30 likely buyers from the profile. competitors are never on that list.
 3. **checks each one for signals.**
-   - funding: a form d in the window, with the amount.
-   - hiring: open jobs on their greenhouse or ashby board whose titles match the seller's buyers. for an seo tool that's "head of seo", not "paid social manager".
-   then a **fit check**: gemini reads what each company does (its homepage, or the news headlines) and says yes, maybe or no on whether it would actually buy from the seller, with a one-line reason. "no" gets dropped, and the report lists those at the bottom in case it got one wrong. a clear fit ranks above a company with more signals but an unclear fit.
-4. **writes a ranked lead list** to `leads/<seller>-<date>.md` and `.csv`: the company, its website, why it fits, links to the filing and job posts as proof, and the people on its sec filing. for a startup those are almost always the founders and the ceo. raised and hiring ranks highest.
+   - **funding:** the raise, with the amount, the round and the date. rupees ("rs 40 crore", "₹10 cr"), euros and pounds become rough dollars, and the original wording stays next to it. raises with no amount stay in as "amount not disclosed", because strategic and pe deals often don't say. the window is the last 90 days (`--days` to change it), and a seller's minimum raise can go as low as $1m.
+   - **hiring, two kinds.**
+     - *team hires* (`hire_keywords`): they're building the team that would buy the product. "head of seo" for an seo tool.
+     - *ops-pain hires* (`ops_pain_keywords`): they're hiring people to do by hand what the seller automates. "loan processor" or "claims specialist" for a document-parsing api. this is often the stronger signal, so it scores like a senior hire. the report says which kind hit, and which word matched.
+   - the jobs come from greenhouse, ashby, lever and workable, or the company's own `/careers` or `/jobs` page when it doesn't use a job board. a board only counts if it provably belongs to the company: its own site links to it, or the board names the company or lists its domain (the circle.so board doesn't count for circle.com). careers pages are on the company's own domain, so they can't belong to anyone else.
 
-form d gives a legal name, not a website, so i guess the domain from the name (`Deep Cogito Inc.` → `deepcogito.com`) and check the homepage actually belongs to them. parked domains and redirects somewhere else get rejected. guessed websites are labelled in the report so i know to double check them.
+   then a **fit check**: does each company actually buy what the seller sells? it says yes, maybe or no with a one-line reason. "no" gets dropped, and the report lists those at the bottom in case it got one wrong. a clear fit ranks above a company with more signals but an unclear fit.
+4. **finds the people.** if the company has a form d, the people on it. if not (any indian or uk startup), the founder, ceo or coo from the raise article and the company's own `/about`, `/team` and `/company` pages. it never guesses: a name only counts if a title like "co-founder & ceo" is right next to it. every person keeps the url they were found on.
+5. **checks the evidence again, at run time.** every job url is fetched again at the end. it has to return 200 and still show the role, or the job is dropped. a lead with nothing left gets dropped too. every lead in the report has its signals listed with a date and a source url.
+6. **writes a ranked lead list** to `leads/<seller>-<date>.md` and `.csv`.
+
+form d gives a legal name, not a website, so i guess the domain from the name (`Deep Cogito Inc.` → `deepcogito.com`, `Perry AI` → `perry.ai`) and check the homepage actually belongs to them. parked domains and redirects somewhere else get rejected. guessed websites are labelled in the report so i know to double check them.
+
+### running it without a key
+
+everything works without `GEMINI_API_KEY`. the parts that would use gemini fall back to rules, and the report labels what was made that way as `rule-based`:
+
+- **reading headlines:** patterns like "`<company>` raises / secures / bags / nets `$X` `<round>`", "`<investor>` invests in `<company>`", and "launches `<company>` with `$X`". for a launch headline with no amount ("nutanix founder ajeet singh floats new ai martech startup different"), it reads the opening of the article itself for the raise.
+- **the fit check:** keyword matching against the profile's `buyers`, `buyer_industries` and `news_queries`. a company hiring ops-pain roles counts as a fit. a competitor, or a company whose description shares nothing with the buyers, is a "no".
+- **the seller profile:** there's no rule-based version of this. write it by hand: copy `config/sellers/_template.json`. the other files in `config/sellers/` are filled-in examples.
+
+with a key, gemini does all three, and if a batch fails twice that batch falls back to the rules instead of being skipped.
 
 ### the gemini key
 
-step 1 needs a free gemini key from google ai studio. put it in `.env` as `GEMINI_API_KEY=...`. without a key it still works, but someone has to write the profile by hand: copy `config/sellers/_template.json`. `config/sellers/nozzle-io.json` is a filled-in example.
+get a free key from google ai studio and put it in `.env` as `GEMINI_API_KEY=...`.
 
 two things i ran into:
 
 - **the key has to come from a project with no billing.** my first key was in a project with prepaid billing and no credits, and every call came back `402 prepayment credits are depleted`, even on the free models. a key from a fresh project with no billing works.
-- **the bigger free model is often busy.** `gemini-3.8-flash` came back `503 high demand` a few times. if that happens it retries once, then switches to `gemini-3.5-flash-lite`, which has answered every time so far.
+- **the bigger free model is often busy.** `gemini-3.8-flash` came back `503 high demand` a few times. if that happens it retries once, then switches to `gemini-3.5-flash-lite`.
 
 some sites block scripts (gusto.com sends a 403 to anything automated). when that happens, gemini writes the profile from what it already knows about the company. the run tells you so, and the profile is marked `check it`. if gemini doesn't know the company, it stops and asks for a hand-written profile instead of guessing.
 
-i went with gemini because the free tier is enough for this. it's one call per seller, and only public website text gets sent. on the free tier google can use that text to improve its products, which is fine for public pages. any llm would do. gemini is just the free one.
+i went with gemini because the free tier is enough for this. only public text gets sent (websites and headlines), and on the free tier google can use it to improve its products, which is fine for public pages. any llm would do. gemini is just the free one.
+
+google news also rate-limits: it sent a `429` after too many searches in a row. so the searches are spaced 1.5 seconds apart, and a 429 is retried after a pause.
 
 ### my test runs
 
@@ -204,10 +222,12 @@ what's still weak:
 
 - **the fit check is only as good as the description.** when a company's homepage won't load and the headline is vague, gemini has to guess, and it says "maybe". the "dropped" list is at the bottom of every report, so you can catch a wrong "no".
 - **leads with the same score are in alphabetical order.** there are a lot of 8s.
-- **news leads have no founder names.** names come from sec filings, and a london startup doesn't have one.
+- **people pages vary a lot.** founder names come from the raise article and the company's about or team page. when a site loads its team with javascript, or the article only names investors, there's no name. it doesn't guess.
 - **about a quarter of the funded companies had no website i could confirm.** the founders' names are still there, so you can search for them.
 - **the website guess can be wrong.** alcar inc. (darien, ct) first got matched to a swedish alcar.se. i fixed that one (redirects to foreign domains are rejected now), but guessed sites still need a look.
-- **hiring is only checked at companies it already found.** there's no list of every job board out there.
+- **hiring is only checked at companies it already found.** there's no list of every job board out there. a lender hiring loan processors only shows up if it raised in the window, or it's on my list or the profile's likely buyers.
+- **the rule-based headline reader can't read every headline.** "startup supporting caregivers raises $3.5m" never names the company, so the description becomes the name. the fit check judges it like any other lead.
+- **google news links are redirects,** so the raise article is only read for inc42, entrackr and yourstory items. for the rest, people come from the company's own pages.
 
 ## crm hand-off (n8n + hubspot)
 

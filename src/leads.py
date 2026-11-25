@@ -149,17 +149,30 @@ def find_board(name, domain):
 
 
 def match_hires(postings, profile):
-    """Postings whose title says they're building the team that buys from the seller."""
-    keywords = profile["hire_keywords"]
+    """Postings whose title is a buying signal for the seller. Two kinds:
+
+      team     - matches hire_keywords: they're building the team that would
+                 buy or use the product ("Head of SEO" for an SEO tool)
+      ops_pain - matches ops_pain_keywords: they're hiring people to do by hand
+                 what the product automates ("Loan Processor" for a document
+                 parsing api). Often the stronger signal of the two.
+
+    Each match says which kind hit, and which keyword.
+    """
+    kinds = [("ops_pain", profile.get("ops_pain_keywords", [])), ("team", profile.get("hire_keywords", []))]
     exclude = profile.get("exclude_title_words", [])
     found = []
     for p in postings:
         title = _norm_text(p["title"])
-        hit = next((k for k in keywords if _has(title, _norm_text(k))), None)
-        if not hit or any(_has(title, _norm_text(x)) for x in exclude):
+        if any(_has(title, _norm_text(x)) for x in exclude):
             continue
-        found.append({**p, "keyword": hit, "senior": any(_has(title, s) for s in SENIOR)})
-    found.sort(key=lambda p: (not p["senior"], p["title"]))
+        for kind, keywords in kinds:
+            hit = next((k for k in keywords if _has(title, _norm_text(k))), None)
+            if hit:
+                found.append({**p, "keyword": hit, "kind": kind,
+                              "senior": any(_has(title, s) for s in SENIOR)})
+                break
+    found.sort(key=lambda p: (p["kind"] != "ops_pain", not p["senior"], p["title"]))
     return found
 
 
@@ -192,7 +205,8 @@ def score(lead):
     if lead.get("funding"):
         s += 3
     hires = lead.get("hires", [])
-    s += min(4, sum(2 if h["senior"] else 1 for h in hires))
+    # an ops-pain hire (doing by hand what the seller automates) counts like a senior team hire
+    s += min(4, sum(2 if (h["senior"] or h.get("kind") == "ops_pain") else 1 for h in hires))
     if lead.get("funding") and hires:
         s += 2
     s += FIT_POINTS.get(lead.get("fit"), 0)
@@ -206,15 +220,27 @@ def why(lead, profile, money):
         reasons.append(f"Fit ({lead['fit']}): {lead['fit_reason']}")
     f = lead.get("funding")
     if f:
-        amount = money(f["amount"]) if f.get("amount") else "money (amount not stated)"
+        if f.get("amount"):
+            amount = money(f["amount"])
+            if f.get("amount_text") and not f["amount_text"].startswith("$"):
+                amount += f" ({f['amount_text']})"  # "₹40 crore" stays visible next to the dollar guess
+        else:
+            amount = "money (amount not disclosed)"
+        rnd = f" in a {f['round']} round" if f.get("round") else ""
         if f.get("source") == "news":
             where = f"in the news, {f['date']}: \"{f['headline']}\""
         else:
             where = f"SEC Form D, filed {f['date']}"
-        reasons.append(f"Raised {amount} ({where}). {profile['funding_reason']}")
+        reasons.append(f"Raised {amount}{rnd} ({where}). {profile['funding_reason']}")
     hires = lead.get("hires", [])
-    if hires:
-        titles = ", ".join(f"\"{h['title']}\"" for h in hires[:3])
-        more = f" and {len(hires) - 3} more" if len(hires) > 3 else ""
-        reasons.append(f"Hiring {titles}{more}. {profile['hire_reason']}")
+    for kind, reason in (("ops_pain", profile.get("ops_pain_reason") or
+                          f"They're hiring people to do by hand what {profile['seller_name']} automates."),
+                         ("team", profile["hire_reason"])):
+        group = [h for h in hires if h.get("kind", "team") == kind]
+        if not group:
+            continue
+        titles = ", ".join(f"\"{h['title']}\"" for h in group[:3])
+        more = f" and {len(group) - 3} more" if len(group) > 3 else ""
+        label = "ops-pain hire" if kind == "ops_pain" else "team hire"
+        reasons.append(f"Hiring {titles}{more} ({label}). {reason}")
     return reasons

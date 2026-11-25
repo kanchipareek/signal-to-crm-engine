@@ -187,7 +187,7 @@ def test_why_reads_like_a_sentence():
             "hires": [{"title": "Head of SEO"}]}
     reasons = leads.why(lead, PROFILE, format_usd)
     assert reasons[0].startswith("Raised $16.18M (SEC Form D, filed 2026-11-18).")
-    assert reasons[1].startswith('Hiring "Head of SEO".')
+    assert reasons[1].startswith('Hiring "Head of SEO" (team hire).')
 
 
 # --- seller profile ------------------------------------------------------------
@@ -276,3 +276,53 @@ def test_ask_json_bad_reply_is_a_clear_error(monkeypatch):
                         lambda req, timeout=0: FakeResp(b'{"candidates": [{"content": {"parts": [{"text": "not json"}]}}]}'))
     with pytest.raises(llm.LLMError, match="valid json"):
         llm.ask_json("hi", api_key="k")
+
+
+# --- two kinds of hiring signal -------------------------------------------------
+
+LENDER_TOOL = {**PROFILE, "seller_name": "Parser", "hire_keywords": ["head of operations"],
+               "ops_pain_keywords": ["loan processor", "claims processor", "document review"]}
+
+
+def test_ops_pain_and_team_hires_are_both_counted_and_labelled():
+    got = leads.match_hires(postings("Mortgage Loan Processor", "Head of Operations", "Backend Engineer",
+                                     "Document Review Specialist"), LENDER_TOOL)
+    assert [(h["title"], h["kind"]) for h in got] == [
+        ("Document Review Specialist", "ops_pain"), ("Mortgage Loan Processor", "ops_pain"),
+        ("Head of Operations", "team")]
+    assert got[1]["keyword"] == "loan processor"
+
+
+def test_excluded_words_apply_to_both_kinds():
+    profile = {**LENDER_TOOL, "exclude_title_words": ["intern"]}
+    assert leads.match_hires(postings("Loan Processor Intern"), profile) == []
+
+
+def test_ops_pain_hire_scores_like_a_senior_hire():
+    ops = leads.score({"hires": [{"title": "Loan Processor", "senior": False, "kind": "ops_pain"}]})
+    junior_team = leads.score({"hires": [{"title": "SEO Analyst", "senior": False, "kind": "team"}]})
+    assert ops == 2 and junior_team == 1
+
+
+def test_why_says_which_kind_of_hire():
+    lead = {"hires": [{"title": "Loan Processor", "kind": "ops_pain"}, {"title": "Head of Operations", "kind": "team"}]}
+    reasons = leads.why(lead, LENDER_TOOL, format_usd)
+    assert reasons[0].startswith("Hiring \"Loan Processor\" (ops-pain hire). They're hiring people to do by hand what Parser automates.")
+    assert reasons[1].startswith('Hiring "Head of Operations" (team hire).')
+
+
+def test_why_keeps_the_rupee_amount_next_to_the_dollars():
+    lead = {"funding": {"amount": 4_761_904, "amount_text": "Rs 40 crore", "round": "series a",
+                        "date": "2026-10-01", "source": "news", "headline": "h"}, "hires": []}
+    assert leads.why(lead, PROFILE, format_usd)[0].startswith("Raised $4.76M (Rs 40 crore) in a series a round")
+
+
+def test_min_raise_cannot_go_below_one_million():
+    assert clean({**PROFILE, "min_raise_usd": 100_000})["min_raise_usd"] == 1_000_000
+    assert clean({**PROFILE, "min_raise_usd": 3_000_000})["min_raise_usd"] == 3_000_000
+
+
+def test_template_has_both_kinds_of_hiring_signal():
+    template = clean(json.loads((ROOT / "config" / "sellers" / "_template.json").read_text(encoding="utf-8")))
+    assert template["hire_keywords"] and template["ops_pain_keywords"]
+    assert template["buyer_industries"] and template["news_queries"]

@@ -195,4 +195,4 @@ def test_why_for_a_news_raise():
 
 def test_why_when_news_has_no_amount():
     lead = {"funding": {"amount": None, "date": "2026-11-18", "source": "news", "headline": "h"}, "hires": []}
-    assert leads.why(lead, PROFILE, format_usd)[0].startswith("Raised money (amount not stated)")
+    assert leads.why(lead, PROFILE, format_usd)[0].startswith("Raised money (amount not disclosed)")

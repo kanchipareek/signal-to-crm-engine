@@ -33,6 +33,8 @@ FORM_D_INDUSTRY_GROUPS = [
     "Tourism and Travel Services",
 ]
 
+MIN_RAISE_FLOOR = 1_000_000
+
 REQUIRED = ("seller", "seller_name", "sells", "buyers", "form_d_industry_groups",
             "min_raise_usd", "hire_keywords", "hire_reason", "funding_reason")
 
@@ -80,13 +82,16 @@ Return ONLY a JSON object with exactly these fields:
   "sells": "one sentence: what they sell",
   "buyers": "two or three sentences: which companies buy this and why",
   "buyer_roles": ["job titles of the people who would buy or use it, e.g. 'Head of SEO'"],
+  "buyer_industries": ["4 to 10 short lowercase phrases naming the kinds of companies that buy this, e.g. for a document-parsing api: 'mortgage lending', 'consumer lending', 'insurance', 'mga', 'legal services', 'healthcare operations'. Used to check if a company fits."],
   "competitors": ["domains of companies that sell something similar - they are never leads"],
   "news_queries": ["3 to 6 short phrases describing the BUYER companies' own businesses, used to search funding news, e.g. for a document-parsing api: 'legal ai', 'insurance claims automation', 'fintech document processing'. Describe what the buyers do, not what the seller does."],
   "hire_keywords": ["8 to 15 short lowercase phrases that, if they appear in a JOB TITLE at a company, mean that company is building the team that would buy this. Be specific to this product: for an SEO tool, 'seo' and 'organic search', not 'growth marketing' or 'digital marketing', which match almost every marketing job. Never use words like 'manager', 'lead' or 'engineer' on their own. If the product is a developer or AI tool, don't use titles every tech company hires ('machine learning', 'llm', 'ai engineer') - pick titles that show the specific need, e.g. 'document processing', 'data extraction', 'intelligent automation'."],
   "exclude_title_words": ["lowercase words that mean a matching title is NOT a buying signal: 'intern', 'assistant', 'recruiter', and words for neighbouring jobs this product doesn't serve (for an SEO tool: 'paid', 'ppc', 'social', 'design')"],
   "hire_reason": "one sentence, starting with 'Hiring for', on why such a hire makes them a good lead",
+  "ops_pain_keywords": ["6 to 15 short lowercase phrases for JOB TITLES of people hired to do BY HAND the work this product automates. A company hiring these has the exact pain the seller fixes. e.g. for a document-parsing api: 'loan processor', 'mortgage processor', 'underwriting assistant', 'claims processor', 'claims specialist', 'document review', 'data entry'. For an seo tool: 'seo analyst', 'rank tracking'. These are often junior or operations roles - that's the point."],
+  "ops_pain_reason": "one sentence on why hiring people for that manual work makes them a good lead",
   "form_d_industry_groups": ["pick ONLY from this list: {groups}"],
-  "min_raise_usd": a whole number, the smallest raise that suggests budget for this product,
+  "min_raise_usd": a whole number, the smallest raise that suggests budget for this product (at least 1000000),
   "max_raise_usd": a whole number, the largest raise that still fits (big enterprises may be out of reach),
   "startups_only": true if they mainly sell to startups and scaleups, else false,
   "funding_reason": "one sentence on why a fresh raise makes a company a good lead for them",
@@ -124,14 +129,18 @@ def clean(profile):
     profile["form_d_industry_groups"] = [g for g in profile["form_d_industry_groups"]
                                          if g in FORM_D_INDUSTRY_GROUPS]
     profile["hire_keywords"] = sorted({k.strip().lower() for k in profile["hire_keywords"] if k.strip()})
+    profile["ops_pain_keywords"] = sorted({k.strip().lower() for k in profile.get("ops_pain_keywords", []) if k.strip()})
     profile["exclude_title_words"] = sorted({k.strip().lower() for k in profile.get("exclude_title_words", []) if k.strip()})
-    profile["min_raise_usd"] = int(profile["min_raise_usd"])
+    # a raise smaller than $1m rarely means budget for a b2b product, so 1m is the floor
+    profile["min_raise_usd"] = max(int(profile["min_raise_usd"]), MIN_RAISE_FLOOR)
     profile["max_raise_usd"] = int(profile.get("max_raise_usd") or 0) or None
     profile.setdefault("startups_only", True)
     profile.setdefault("example_buyers", [])
     profile.setdefault("buyer_roles", [])
     profile.setdefault("competitors", [])
     profile.setdefault("news_queries", [])
+    profile.setdefault("buyer_industries", [])
+    profile.setdefault("ops_pain_reason", "")
     competitors = {c.lower().removeprefix("www.") for c in profile["competitors"]}
     profile["example_buyers"] = [b for b in profile["example_buyers"]
                                  if (b.get("domain") or "").lower().removeprefix("www.") not in competitors]

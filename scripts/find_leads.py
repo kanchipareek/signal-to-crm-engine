@@ -113,22 +113,31 @@ def scan_form_d(profile, days, max_filings):
 def from_news(profile, days):
     """Companies whose raise was reported in the news in the window."""
     headlines = search_headlines(profile, days)
-    log(f"  {len(headlines)} funding headlines from google news")
+    by_source = {}
+    for h in headlines:
+        by_source[h["source"]] = by_source.get(h["source"], 0) + 1
+    log(f"  {len(headlines)} funding headlines ({', '.join(f'{k} {v}' for k, v in sorted(by_source.items()))})")
     if not headlines:
         return []
     raises = extract_raises(headlines)
+    how = "gemini" if any(r["extracted_by"] == "gemini" for r in raises) else "rule-based"
     out = []
     for r in raises:
-        if r["amount"] and (r["amount"] < profile["min_raise_usd"] // 2 or not fits_raise(r["amount"], profile)):
-            continue  # clearly outside the seller's range (half the minimum, since amounts get rounded)
+        # undisclosed amounts stay in (strategic and pe deals often have none);
+        # stated amounts have to be in the seller's range
+        if r["amount"] and (r["amount"] < profile["min_raise_usd"] or not fits_raise(r["amount"], profile)):
+            continue
         out.append({
             "name": r["company"], "domain": None, "location": r["country"] or "",
             "what_they_do": r["what_they_do"],
-            "funding": {"amount": r["amount"], "date": r["date"], "url": r["url"],
-                        "source": "news", "headline": r["headline"]},
-            "found_via": "raised (in the news)",
+            "funding": {"amount": r["amount"], "amount_text": r.get("amount_text"), "round": r.get("round"),
+                        "date": r["date"], "url": r["url"], "sources": r.get("sources", [r["url"]]),
+                        "source": "news", "headline": r["headline"], "extracted_by": r["extracted_by"]},
+            "found_via": f"raised (in the news, {r.get('news_source') or 'news'})",
         })
-    log(f"  {len(raises)} raises in the headlines, {len(out)} in the seller's range")
+    undisclosed = sum(1 for o in out if not o["funding"]["amount"])
+    log(f"  {len(raises)} raises in the headlines ({how}), {len(out)} in the seller's range "
+        f"({undisclosed} with the amount not disclosed)")
     return out
 
 
@@ -249,8 +258,8 @@ def write_report(profile, leads, days, rejected=()):
 def main():
     ap = argparse.ArgumentParser(description="find signal-based leads for a seller")
     ap.add_argument("seller", help="the domain of the company you want leads for, e.g. acme.com")
-    ap.add_argument("--days", type=int, default=14, help="how far back to look for funding (default 14)")
-    ap.add_argument("--max-filings", type=int, default=500, help="cap on form d filings to read (default 500)")
+    ap.add_argument("--days", type=int, default=90, help="how far back to look for funding (default 90)")
+    ap.add_argument("--max-filings", type=int, default=1000, help="cap on form d filings to read, newest first (default 1000)")
     ap.add_argument("--no-scan", action="store_true", help="skip the form d scan, only check the lists")
     ap.add_argument("--refresh-profile", action="store_true", help="rebuild the seller profile from their site")
     ap.add_argument("--no-news", action="store_true", help="skip the google news funding search")

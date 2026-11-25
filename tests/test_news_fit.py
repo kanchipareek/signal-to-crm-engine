@@ -80,10 +80,12 @@ def test_headlines_are_deduped_and_dated(monkeypatch):
 
 def test_buyer_queries_are_searched(monkeypatch):
     seen = []
-    monkeypatch.setattr(news, "_rss", lambda q, days: seen.append(q) or [])
+    monkeypatch.setattr(news, "_rss", lambda q, days, edition="us": seen.append((q, edition)) or [])
+    monkeypatch.setattr(news, "_feed", lambda name: [])
     news.search_headlines(PROFILE, 14)
-    assert "legal ai raises" in seen
-    assert "insurance claims automation raises" in seen
+    assert ("legal ai raises", "us") in seen
+    assert ("legal ai raises", "in") in seen          # every query runs on the india edition too
+    assert ("insurance claims automation raises", "in") in seen
 
 
 def test_extract_raises_maps_gemini_reply_to_headlines(monkeypatch):
@@ -96,10 +98,13 @@ def test_extract_raises_maps_gemini_reply_to_headlines(monkeypatch):
         {"headline": 1, "company": "", "amount_usd": None},         # no company -> ignored
     ]}
     monkeypatch.setattr(news, "ask_json", lambda prompt, model=None: reply)
-    got = news.extract_raises(headlines)
-    assert got == [{"company": "Perry AI", "amount": 2200000, "round": "seed",
-                    "what_they_do": "AI legal software for private capital", "country": "London",
-                    "headline": "Perry AI raises $2.2M seed", "url": "u1", "date": "2026-11-18"}]
+    got = news.extract_raises(headlines, use_llm=True)
+    assert len(got) == 1
+    perry = got[0]
+    assert (perry["company"], perry["amount"], perry["round"], perry["country"]) == ("Perry AI", 2200000, "seed", "London")
+    assert perry["what_they_do"] == "AI legal software for private capital"
+    assert perry["extracted_by"] == "gemini"
+    assert perry["sources"] == ["u1"]
 
 
 # --- fit check -----------------------------------------------------------------
@@ -153,7 +158,7 @@ def test_descriptions_from_every_outlet_are_merged(monkeypatch):
         {"headline": 1, "company": "Perry AI", "amount_usd": 2200000, "what_they_do": "AI legal software for private capital"},
     ]}
     monkeypatch.setattr(news, "ask_json", lambda prompt, model=None: reply)
-    [perry] = news.extract_raises(headlines)
+    [perry] = news.extract_raises(headlines, use_llm=True)
     assert perry["what_they_do"] == "investment fund management startup; AI legal software for private capital"
     assert perry["amount"] == 2200000
 

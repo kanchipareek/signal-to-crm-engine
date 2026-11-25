@@ -38,6 +38,11 @@ def _extract_json(text):
         raise LLMError(f"model didn't return valid json: {exc}; got: {text[:300]}")
 
 
+def has_key():
+    """True if a gemini key is set. Without one, the lead finder uses its rule-based fallbacks."""
+    return bool(os.environ.get("GEMINI_API_KEY"))
+
+
 class Busy(LLMError):
     """The model is overloaded or rate-limited. Worth retrying, or trying another model."""
 

@@ -22,7 +22,7 @@ cd signal-to-crm-engine
 python -m venv .venv
 source .venv/bin/activate          # windows (git bash): source .venv/Scripts/activate
 pip install -r requirements.txt
-python -m pytest tests/ -q         # 224 passed
+python -m pytest tests/ -q         # 225 passed
 ```
 
 ### trying it without project 1
@@ -218,6 +218,15 @@ the fit check now catches leads like that. you can also open `config/sellers/sie
 
 **nozzle.io (an seo tracking tool), by hand.** i tested it on nozzle.io (an seo tracking tool), with a profile i wrote by hand because i didn't have a key yet. over the last 14 days of form ds it went through 1,620 filings, kept 388 after dropping funds and llcs, and found 43 companies that raised $5m+ in nozzle's industries. with my account list added, that came out to 49 leads, and 45 of them had founder names from their filing. the top one was the kind of lead i wanted: zeely raised $17m and is hiring a marketing analytics lead.
 
+**two sellers it had never seen, live, 26 nov 2026.** i wanted to check it works for anyone and not just the sellers i'd tuned it on, so i picked one indian and one us seller in different industries and gave it nothing but the domain. gemini wrote both profiles (`config/sellers/kapture-cx.json` and `vouch-us.json`, not hand-edited) and the runs looked back 90 days. the reports are in `leads/` (gitignored, since they name real people).
+
+- **kapture.cx (bengaluru, ai customer support and cx automation).** gemini said their buyers are bfsi, retail, travel and digital-native companies with high volumes of support tickets, collections and claims. it picked team hires like "customer support" and "cx operations", and ops-pain hires like "call center agent", "collections specialist" and "claims specialist". the run read 1,703 headlines (924 from inc42, 228 from google news india), found 468 raises, checked 413 companies, and the fit check dropped 219 of them (*"green hydrogen technology company focused on manufacturing, not high-volume customer support"*). that left **128 leads, 39 clear fits**. 30 of them are indian raises read in rupees, like boldfit, curebay, dailyobjects, kissht, groww amc and inprime finserv: d2c brands and lenders, exactly kapture's buyers. the top lead is numeral ($100m, hiring a priority support specialist and a tier 2 support specialist). stripe, ramp and mercury come in on support hiring alone.
+- **vouch.us (san francisco, business insurance for startups).** a completely different buyer: funded tech startups that need d&o and cyber cover once they raise. gemini picked hires like head of people, general counsel and vp finance, and ops-pain hires like legal counsel, compliance officer and risk manager. the run read 1,876 headlines, found 577 raises and checked 635 companies. the fit check dropped 123 (including ennabl, which builds software *for* insurance brokers, so more of a peer than a buyer). that left **446 leads, 297 clear fits**. a fresh raise is the signal here, so most leads are raise-only. 25 are also hiring the right roles: conveo ($50m, people operations manager), agon ($70m, head of legal), reco ($30m, head of people operations).
+
+every lead in both reports has at least one signal with a date and a source url. the job urls were fetched again at the end of the run: 0 of 22 had gone for kapture, and 1 of 50 for vouch, so that lead was dropped. 55 kapture leads and 201 vouch leads came with founder or ceo names, each with the page it was found on.
+
+the first try turned up two bugs, both fixed and covered by tests now. a company that raised twice in the window (noah, $16m then $38m) showed up as two leads, and now it's one lead with both raises as evidence. and title or filler words got picked up as names ("global sales, president", "eric glyman explains", "post payments bank"), so they're filtered out now. it still never guesses a name.
+
 what's still weak:
 
 - **the fit check is only as good as the description.** when a company's homepage won't load and the headline is vague, gemini has to guess, and it says "maybe". the "dropped" list is at the bottom of every report, so you can catch a wrong "no".
@@ -356,7 +365,7 @@ python -m pytest tests/ -v
 - `tests/test_news_fit.py` has 13 cases for the news search and the fit check: us and india editions, deduping headlines, competitors kept out of the likely buyers, a broken gemini batch falling back to the keyword check, and the keyword check on its own with no key.
 - `tests/test_news_rules.py` has 34 cases for reading headlines without gemini, on real headlines: rupees, euros and pounds, rounds, launch and strategic-investment headlines, and things that aren't raises.
 - `tests/test_boards.py` has 16 cases for lever, workable and careers pages, and the check that a board really belongs to the company's domain.
-- `tests/test_people.py` has 6 cases for founder and ceo names outside sec filings, including that it doesn't guess and doesn't take title words like "global sales" for a name.
+- `tests/test_people.py` has 7 cases for founder and ceo names outside sec filings, including that it doesn't guess and doesn't take title words like "global sales" for a name.
 - `tests/test_evidence.py` has 8 cases for the run-time recheck: dead or changed jobs dropped, leads with no evidence dropped, every row with a date and a url, and a company with two raises showing up once.
 - `tests/test_acceptance.py` has 10 acceptance cases. they run the real lead finder offline, on feeds, job boards and company pages recorded from a live run on 25 nov 2026 (`tests/fixtures/acceptance/`, refreshed with `python scripts/capture_acceptance.py`), with no gemini key, so they give the same answer every time:
   - **rightfit.so** has to surface at least 3 of different.ai, firstwork.com, shamrockus.ai and humynlabs.ai. it surfaces all four, with the right raises ($48m seed, $15m series a, $5m seed, $47m series a). different, firstwork and humyn come with their real engineering, design and product roles. shamrock ai's site can't be found from its name or its raise articles, so its roles can't be read.

@@ -74,8 +74,9 @@ def verify_lead(lead, cache):
 def evidence_rows(lead):
     """[(signal, date, source url)] for the report."""
     rows = []
-    f = lead.get("funding")
-    if f:
+    for f in [lead.get("funding")] + lead.get("other_raises", []):
+        if not f:
+            continue
         kind = "raise (sec form d)" if f.get("source") != "news" else f"raise ({f.get('round') or 'round'}, news)"
         for url in (f.get("sources") or [f.get("url")])[:4]:
             rows.append((kind, f.get("date", ""), url))

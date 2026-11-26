@@ -260,8 +260,27 @@ def process(cands, profile, days, workers=6, fit_check=True):
         c["score"] = score(c)
         c["why"] = why(c, profile, format_usd)
         leads.append(c)
+    leads = merge_same_company(leads)
     leads.sort(key=lambda l: (-l["score"], l["name"]))
     return leads, rejected, done
+
+
+def merge_same_company(leads):
+    """One lead per company. A company with two raises in the window (a seed and
+    then a series a) shows up once per raise; keep the best-scoring one and put
+    the other raises on it as extra evidence."""
+    best = {}
+    for l in sorted(leads, key=lambda l: -l["score"]):
+        key = l.get("domain") or l["name"].lower()
+        if key not in best:
+            best[key] = l
+            continue
+        kept, f = best[key], l.get("funding")
+        if f and f != kept.get("funding"):
+            kept.setdefault("other_raises", []).append(f)
+            kept["why"].append(f"also raised {f.get('amount_text') or (format_usd(f['amount']) if f.get('amount') else 'an undisclosed amount')}"
+                               f" on {f.get('date') or '?'}")
+    return list(best.values())
 
 
 # --- step 4: report ------------------------------------------------------------------

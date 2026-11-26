@@ -87,3 +87,21 @@ def test_evidence_rows_have_signal_date_and_url():
         ("raise (seed, news)", "2026-10-22", "https://entrackr.com/b"),
         ("team hire: AI Engineer", "open on 2026-11-25", "https://acme.ai/careers"),
     ]
+
+
+def test_a_company_with_two_raises_is_one_lead_with_both_as_evidence():
+    from scripts.find_leads import merge_same_company
+    seed = {"amount": 16_000_000, "amount_text": "$16m", "round": "seed", "source": "news",
+            "date": "2026-09-01", "sources": ["https://a.example/seed"]}
+    a_round = {"amount": 38_000_000, "amount_text": "$38m", "round": "series a", "source": "news",
+               "date": "2026-11-01", "sources": ["https://b.example/series-a"]}
+    leads = [{"name": "Noah", "domain": "noah.com", "score": 12, "funding": seed, "hires": [], "why": ["seed"]},
+             {"name": "Noah", "domain": "noah.com", "score": 13, "funding": a_round, "hires": [], "why": ["a"]},
+             {"name": "Other", "domain": "other.com", "score": 5, "funding": seed, "hires": [], "why": []}]
+    merged = merge_same_company(leads)
+    assert [l["name"] for l in merged] == ["Noah", "Other"]
+    noah = merged[0]
+    assert noah["funding"] is a_round and noah["other_raises"] == [seed]
+    urls = [u for _, _, u in evidence_rows(noah)]
+    assert urls == ["https://b.example/series-a", "https://a.example/seed"]
+    assert any("also raised $16m" in w for w in noah["why"])

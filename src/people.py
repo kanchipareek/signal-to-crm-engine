@@ -27,7 +27,11 @@ Read More Founded Founder Chief Officer Executive Investors Investor Led Backed 
 News Today Monday Tuesday Wednesday Thursday Friday Saturday Sunday Also According Speaking Commenting
 Before After While When Since Under Former Previously Current Then Both Its Their His Her Meet
 Global Regional Country Sales Marketing Operations Engineering Product Business Finance Legal Growth
-Managing Senior Junior Vice Head Director Manager General Partner Principal Associate Board Lead Executive""".split())
+Managing Senior Junior Vice Head Director Manager General Partner Principal Associate Board Lead Executive
+Says Said Explains Explained Told Adds Added Notes Noted Shares Believes Writes Joins Joined Welcomes
+With On Of And For From At By In To Via
+Bank Payments Post Analytics Cloud Clinics Health Healthcare Systems Solutions Software Networks Insurance
+Finance Financial Holdings Bancshares Media Studio Studios Foods Energy Motors Robotics AI""".split())
 
 AFTER = re.compile(rf"(?P<name>{NAME}),?\s+(?:its\s+|the\s+|our\s+)?(?P<title>{TITLE_PHRASE})\b")
 BEFORE = re.compile(rf"\b(?P<title>{TITLE_PHRASE})\s+(?:and\s+)?(?P<name>{NAME})\b")

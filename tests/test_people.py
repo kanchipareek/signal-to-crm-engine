@@ -76,3 +76,12 @@ def test_title_words_are_not_names():
     for bad in ("Before Conveo", "Global Sales", "Managing Partner", "Senior Partner", "Former Vice"):
         assert bad not in got, got
     assert "Maarten Claes" in got
+
+
+def test_verbs_joiners_and_company_words_are_not_names():
+    # also from live runs: "CEO Eric Glyman explains", "founder of Clinics On Cloud"
+    for bad in ("Eric Glyman Explains", "Clinics On Cloud", "Fractal Analytics", "With Bernardo Seixas",
+                "Post Payments Bank"):
+        assert not people._good_name(bad), bad
+    for good in ("Eric Glyman", "Bernardo Seixas", "Sarah Iglesias Hiller", "Noah Spaulding"):
+        assert people._good_name(good), good

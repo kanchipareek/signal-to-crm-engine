@@ -22,7 +22,7 @@ cd signal-to-crm-engine
 python -m venv .venv
 source .venv/bin/activate          # windows (git bash): source .venv/Scripts/activate
 pip install -r requirements.txt
-python -m pytest tests/ -q         # 137 passed
+python -m pytest tests/ -q         # 224 passed
 ```
 
 ### trying it without project 1
@@ -352,8 +352,16 @@ python -m pytest tests/ -v
 - `tests/test_webhook.py` has 14 cases for when things go wrong: replays, bad signatures, broken bodies, running out of retries, dead-lettering and re-running the detector.
 - `tests/test_payload.py` checks the company domain makes it into the payload.
 - `tests/test_ashby.py` has 14 cases for ashby: the posting format, skipping unlisted jobs, picking the right fetcher, and the finder's domain check (including the circle.so case).
-- `tests/test_leads.py` has 34 cases for the lead finder: guessing websites (and rejecting parked or foreign ones), matching job titles to a seller's buyers, sec name matching, founder names, scoring, the seller profile, and the gemini client with the network mocked out.
-- `tests/test_news_fit.py` has 12 cases for the news search and the fit check: deduping headlines, merging what different outlets say about the same raise, competitors kept out of the likely buyers, one broken gemini batch not sinking the run, and a clear fit outranking a company with more signals.
+- `tests/test_leads.py` has 48 cases for the lead finder: guessing websites (rejecting parked, foreign and site-builder ones, picking different.ai over different.com, elio.mortgage), team and ops-pain hires, sec name matching, scoring, the seller profile, and the gemini client with the network mocked out.
+- `tests/test_news_fit.py` has 13 cases for the news search and the fit check: us and india editions, deduping headlines, competitors kept out of the likely buyers, a broken gemini batch falling back to the keyword check, and the keyword check on its own with no key.
+- `tests/test_news_rules.py` has 34 cases for reading headlines without gemini, on real headlines: rupees, euros and pounds, rounds, launch and strategic-investment headlines, and things that aren't raises.
+- `tests/test_boards.py` has 16 cases for lever, workable and careers pages, and the check that a board really belongs to the company's domain.
+- `tests/test_people.py` has 6 cases for founder and ceo names outside sec filings, including that it doesn't guess and doesn't take title words like "global sales" for a name.
+- `tests/test_evidence.py` has 8 cases for the run-time recheck: dead or changed jobs dropped, leads with no evidence dropped, every row with a date and a url, and a company with two raises showing up once.
+- `tests/test_acceptance.py` has 10 acceptance cases. they run the real lead finder offline, on feeds, job boards and company pages recorded from a live run on 25 nov 2026 (`tests/fixtures/acceptance/`, refreshed with `python scripts/capture_acceptance.py`), with no gemini key, so they give the same answer every time:
+  - **rightfit.so** has to surface at least 3 of different.ai, firstwork.com, shamrockus.ai and humynlabs.ai. it surfaces all four, with the right raises ($48m seed, $15m series a, $5m seed, $47m series a). different, firstwork and humyn come with their real engineering, design and product roles. shamrock ai's site can't be found from its name or its raise articles, so its roles can't be read.
+  - **unsiloed.ai** has to surface at least 3 of elio.mortgage, trovy.com, tomo.com, aurenity.com and alpine-specialty.com. it surfaces all five. elio, aurenity (great hill investment, amount not disclosed) and alpine specialty come from the news. tomo and trovy come in through a list, the way a real run would only see them, and their real loan processor jobs make them ops-pain fits.
+  - every lead in both has signals with a date and a source url, and every person has a source.
 - `tests/test_funding.py` has 27 cases for the funding signal: reading form d, every branch of the rule, the $5m line, the 180-day window, no duplicates, same-day filings and the payload.
 
 `scripts/send_test_signals.py` also runs 7 end-to-end tests against the real n8n workflow and hubspot:
@@ -400,13 +408,16 @@ config/    match_rule.json (hire rule), funding_rule.json (funding rule),
            boards.csv (job boards, greenhouse or ashby), boards_gtm.csv (12-board demo list),
            sec_issuers.csv (company -> sec cik),
            sellers/ (one profile per seller for the lead finder, plus _template.json)
-src/       fetch.py  match.py  sec.py  funding.py  deliver.py  seller.py  leads.py  news.py  fit.py  llm.py
-scripts/   run_detector.py  run_funding_detector.py  find_leads.py  find_sec_ciks.py  webhook_server.py
+src/       fetch.py  match.py  sec.py  funding.py  deliver.py  seller.py  leads.py  news.py  fit.py
+           people.py  evidence.py  llm.py
+scripts/   run_detector.py  run_funding_detector.py  find_leads.py  capture_acceptance.py  find_sec_ciks.py  webhook_server.py
            show_signals.py  run_sql.py  build_ci_db.py  send_test_signals.py  check_invalid_signal.py
 n8n/       workflow.json (the hubspot hand-off, secrets swapped for placeholders)
 sql/       schema and migrations
 schemas/   signal.schema.json
-tests/     test_match.py  test_ashby.py  test_funding.py  test_leads.py  test_news_fit.py  test_webhook.py  test_payload.py
+tests/     test_match.py  test_ashby.py  test_funding.py  test_leads.py  test_news_fit.py  test_news_rules.py
+           test_boards.py  test_people.py  test_evidence.py  test_acceptance.py  test_webhook.py  test_payload.py
+           fixtures/acceptance/ (recorded real data for the acceptance tests)
 docs/      signal_rules.md (how repeats are handled), routing_spec.md (the crm routing)
 .github/   workflows/detect.yml (the scheduled run)
 ```

@@ -24,7 +24,10 @@ NAME = r"[A-Z][a-z]+(?:[-'][A-Z][a-z]+)?(?:\s(?:[A-Z]\.\s)?[A-Z][a-z]+(?:[-'][A-
 NOT_NAMES = set("""The This That Series Seed Funding Round Capital Ventures Partners Fund Inc Ltd Llc Pvt Labs
 Group Technologies Technology Our Team About Company India Bengaluru Bangalore Mumbai Delhi Hyderabad London New York San Francisco
 Read More Founded Founder Chief Officer Executive Investors Investor Led Backed Startup Startups Platform
-News Today Monday Tuesday Wednesday Thursday Friday Saturday Sunday Also According Speaking Commenting""".split())
+News Today Monday Tuesday Wednesday Thursday Friday Saturday Sunday Also According Speaking Commenting
+Before After While When Since Under Former Previously Current Then Both Its Their His Her Meet
+Global Regional Country Sales Marketing Operations Engineering Product Business Finance Legal Growth
+Managing Senior Junior Vice Head Director Manager General Partner Principal Associate Board Lead Executive""".split())
 
 AFTER = re.compile(rf"(?P<name>{NAME}),?\s+(?:its\s+|the\s+|our\s+)?(?P<title>{TITLE_PHRASE})\b")
 BEFORE = re.compile(rf"\b(?P<title>{TITLE_PHRASE})\s+(?:and\s+)?(?P<name>{NAME})\b")

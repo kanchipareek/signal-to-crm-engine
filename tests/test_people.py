@@ -65,3 +65,14 @@ def test_find_people_skips_google_redirect_links_and_reads_company_pages(monkeyp
     assert "https://news.google.com/rss/articles/abc" not in asked
     assert asked[0] == "https://inc42.com/a"
     assert [p["name"] for p in got] == ["Sarat Addanki", "Mick Gallagher"]
+
+
+def test_title_words_are_not_names():
+    # seen on a live run: "Before Conveo, co-founder and CTO", "Global Sales president"
+    text = ("<p>Before Conveo, co-founder and CTO Maarten Claes built search tools.</p>"
+            "<p>Thijn Lamers, Global Sales president, said so. Managing Partner founder of the fund.</p>"
+            "<p>Senior Partner managing director Jane Roe. Former Vice president.</p>")
+    got = [n for n, _ in names(people.people_in_text(text, "u"))]
+    for bad in ("Before Conveo", "Global Sales", "Managing Partner", "Senior Partner", "Former Vice"):
+        assert bad not in got, got
+    assert "Maarten Claes" in got

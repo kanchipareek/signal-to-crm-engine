@@ -1,0 +1,165 @@
+{
+  "seller": "vouch.us",
+  "seller_name": "Vouch",
+  "sells": "Vouch is a business insurance broker and risk advisor providing tailored coverage, compliance solutions, and claims advocacy for growing technology companies.",
+  "buyers": "Fast-growing tech startups and scaleups across industries like AI, fintech, SaaS, and crypto buy Vouch's insurance products to protect their founders, satisfy customer contract requirements, secure venture backing, and manage complex operational risks. They choose Vouch because traditional brokers fail to understand tech-specific exposures such as data risk, IP issues, and regulatory compliance.",
+  "buyer_roles": [
+    "Chief Executive Officer",
+    "Founder",
+    "Chief Financial Officer",
+    "General Counsel",
+    "Head of People",
+    "Chief Operating Officer",
+    "VP of Finance",
+    "Head of Legal"
+  ],
+  "buyer_industries": [
+    "artificial intelligence",
+    "fintech",
+    "saas",
+    "crypto",
+    "hardware",
+    "healthtech",
+    "venture capital",
+    "cybersecurity"
+  ],
+  "competitors": [
+    "hiscox.com",
+    "chubb.com",
+    "thehartford.com",
+    "kerry.com",
+    "foundersuite.com"
+  ],
+  "news_queries": [
+    "ai startup funding",
+    "fintech seed round",
+    "saas series a",
+    "crypto startup expansion",
+    "healthtech funding announcement"
+  ],
+  "hire_keywords": [
+    "chief financial officer",
+    "chief operating officer",
+    "general counsel",
+    "head of legal",
+    "head of people",
+    "vp of finance",
+    "vp of operations"
+  ],
+  "exclude_title_words": [
+    "assistant",
+    "designer",
+    "developer",
+    "engineer",
+    "intern",
+    "junior",
+    "marketing",
+    "recruiter",
+    "sales",
+    "software"
+  ],
+  "hire_reason": "Hiring for executive legal, financial, or operational leadership signals that the company is scaling up, managing new risks, and formalizing corporate governance, making them ready for comprehensive tech insurance.",
+  "ops_pain_keywords": [
+    "compliance officer",
+    "insurance specialist",
+    "legal counsel",
+    "operations manager",
+    "people operations",
+    "risk manager"
+  ],
+  "ops_pain_reason": "Hiring people for internal risk, compliance, and operational workflows indicates the company is grappling with contract requirements, regulatory hurdles, and liability concerns that Vouch's insurance platform resolves.",
+  "form_d_industry_groups": [
+    "Commercial",
+    "Computers",
+    "Other Technology",
+    "Investing",
+    "Other Banking and Financial Services"
+  ],
+  "min_raise_usd": 1000000,
+  "max_raise_usd": 100000000,
+  "startups_only": true,
+  "funding_reason": "A fresh funding round provides new capital and triggers rapid scaling, hiring, and customer acquisition, creating an immediate need for specialized business insurance and contract review.",
+  "example_buyers": [
+    {
+      "name": "Middesk",
+      "domain": "middesk.com"
+    },
+    {
+      "name": "Cocoon",
+      "domain": "meetcocoon.com"
+    },
+    {
+      "name": "Vanta",
+      "domain": "vanta.com"
+    },
+    {
+      "name": "Brex",
+      "domain": "brex.com"
+    },
+    {
+      "name": "Ramp",
+      "domain": "ramp.com"
+    },
+    {
+      "name": "Carta",
+      "domain": "carta.com"
+    },
+    {
+      "name": "Mercury",
+      "domain": "mercury.com"
+    },
+    {
+      "name": "Pilot",
+      "domain": "pilot.com"
+    },
+    {
+      "name": "Check",
+      "domain": "checkhq.com"
+    },
+    {
+      "name": "Lithic",
+      "domain": "lithic.com"
+    },
+    {
+      "name": "Unit",
+      "domain": "unit.co"
+    },
+    {
+      "name": "Alloy",
+      "domain": "alloy.com"
+    },
+    {
+      "name": " Finch",
+      "domain": "tryfinch.com"
+    },
+    {
+      "name": "Doola",
+      "domain": "doola.com"
+    },
+    {
+      "name": "MainStreet",
+      "domain": "mainstreet.com"
+    },
+    {
+      "name": "Pulley",
+      "domain": "pulley.com"
+    },
+    {
+      "name": "AbstractOps",
+      "domain": "abstractops.com"
+    },
+    {
+      "name": "Capchase",
+      "domain": "capchase.com"
+    },
+    {
+      "name": "LendingFront",
+      "domain": "lendingfront.com"
+    },
+    {
+      "name": "Treasury Prime",
+      "domain": "treasuryprime.com"
+    }
+  ],
+  "made_by": "gemini, from their website"
+}

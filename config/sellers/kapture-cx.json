@@ -1,0 +1,172 @@
+{
+  "seller": "kapture.cx",
+  "seller_name": "Kapture CX",
+  "sells": "An AI-powered customer experience and agentic enterprise platform that automates customer support, workflows, and interactions across voice, chat, email, and social channels.",
+  "buyers": "Enterprise and scaling companies in industries like BFSI, retail, travel, energy, and digital-native tech that handle high volumes of customer interactions, support tickets, collections, and claims. They buy this to automate manual customer service operations, scale support without increasing headcount, and improve resolution times.",
+  "buyer_roles": [
+    "Head of Customer Support",
+    "VP of Customer Success",
+    "Director of Customer Experience",
+    "Chief Customer Officer",
+    "Head of Operations",
+    "Customer Support Operations Manager"
+  ],
+  "buyer_industries": [
+    "bfsi",
+    "retail",
+    "travel and hospitality",
+    "e-commerce",
+    "fintech",
+    "energy and utilities",
+    "digital-native tech",
+    "insurance",
+    "lending"
+  ],
+  "competitors": [
+    "zendesk.com",
+    "intercom.com",
+    "freshdesk.com",
+    "ada.cx",
+    "yellow.ai",
+    "kore.ai"
+  ],
+  "news_queries": [
+    "customer support automation",
+    "customer experience AI",
+    "contact center automation",
+    "fintech customer operations",
+    "e-commerce support scaling"
+  ],
+  "hire_keywords": [
+    "contact center",
+    "customer experience",
+    "customer success operations",
+    "customer support",
+    "cx operations",
+    "support operations"
+  ],
+  "exclude_title_words": [
+    "accounting",
+    "assistant",
+    "hardware",
+    "intern",
+    "legal",
+    "marketing",
+    "recruiter",
+    "sales"
+  ],
+  "hire_reason": "Hiring for customer support and CX leadership roles indicates the company is actively scaling its support infrastructure and looking for automation solutions.",
+  "ops_pain_keywords": [
+    "call center agent",
+    "claims specialist",
+    "collections specialist",
+    "customer service representative",
+    "loan processor",
+    "support agent",
+    "support specialist"
+  ],
+  "ops_pain_reason": "Hiring large numbers of manual support or processing agents indicates high operational overhead that this AI platform can automate.",
+  "form_d_industry_groups": [
+    "Business Services",
+    "Commercial",
+    "Commercial Banking",
+    "Health Insurance",
+    "Insurance",
+    "Investing",
+    "Other Banking and Financial Services",
+    "Other Technology",
+    "Retailing",
+    "Tourism and Travel Services"
+  ],
+  "min_raise_usd": 5000000,
+  "max_raise_usd": 100000000,
+  "startups_only": false,
+  "funding_reason": "A fresh funding round provides these companies with the capital to invest in customer experience infrastructure and AI automation to scale efficiently.",
+  "example_buyers": [
+    {
+      "name": "Zelle",
+      "domain": "zellepay.com"
+    },
+    {
+      "name": "Chime",
+      "domain": "chime.com"
+    },
+    {
+      "name": "Klarna",
+      "domain": "klarna.com"
+    },
+    {
+      "name": "Bolt",
+      "domain": "bolt.eu"
+    },
+    {
+      "name": "Deliveroo",
+      "domain": "deliveroo.co.uk"
+    },
+    {
+      "name": "Instacart",
+      "domain": "instacart.com"
+    },
+    {
+      "name": "Getir",
+      "domain": "getir.com"
+    },
+    {
+      "name": "Gorillas",
+      "domain": "gorillas.io"
+    },
+    {
+      "name": "Wanderful",
+      "domain": "sheswanderful.com"
+    },
+    {
+      "name": "Cleartrip",
+      "domain": "cleartrip.com"
+    },
+    {
+      "name": "MakeMyTrip",
+      "domain": "makemytrip.com"
+    },
+    {
+      "name": "oyo",
+      "domain": "oyorooms.com"
+    },
+    {
+      "name": "Razorpay",
+      "domain": "razorpay.com"
+    },
+    {
+      "name": "Cashfree",
+      "domain": "cashfree.com"
+    },
+    {
+      "name": "Pine Labs",
+      "domain": "pinelabs.com"
+    },
+    {
+      "name": "Meesho",
+      "domain": "meesho.com"
+    },
+    {
+      "name": "Nykaa",
+      "domain": "nykaa.com"
+    },
+    {
+      "name": "Zepto",
+      "domain": "zeptonow.com"
+    },
+    {
+      "name": "Dunzo",
+      "domain": "dunzo.com"
+    },
+    {
+      "name": "Policybazaar",
+      "domain": "policybazaar.com"
+    },
+    {
+      "name": "CoinDCX",
+      "domain": "coindcx.com"
+    }
+  ],
+  "made_by": "gemini, from their website"
+}
